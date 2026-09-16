@@ -110,10 +110,16 @@ def learn_session(start_url: str, outdir: Path, profile_dir: Path,
         page.add_init_script(RECORDER_JS)
         page.goto(start_url, wait_until="domcontentloaded", timeout=45000)
         print("LEARN: drive the flow in the Camoufox window. Click the red REC badge when done.")
+        print("LEARN: closing the window also finishes (partial tape is saved).")
         last_url = page.url
         navs: list = []
+        closed_early = False
         while True:
-            page.wait_for_timeout(1000)
+            try:
+                page.wait_for_timeout(1000)
+            except Exception:
+                closed_early = True  # window closed by human — save what we have
+                break
             try:
                 if page.url != last_url:
                     navs.append({"from": last_url, "to": page.url})
@@ -133,11 +139,17 @@ def learn_session(start_url: str, outdir: Path, profile_dir: Path,
                 if st["done"]:
                     break
         print()
-        tape = page.evaluate(
-            "() => ({clicks: window.__fb_rec.clicks, trail: window.__fb_rec.trail, "
-            "hovers: window.__fb_rec.hovers})")
-        tape["navs"] = navs
-        tape["final_url"] = page.url
+        if closed_early:
+            print("LEARN: window closed — saving partial tape.")
+        try:
+            tape = page.evaluate(
+                "() => ({clicks: window.__fb_rec.clicks, trail: window.__fb_rec.trail, "
+                "hovers: window.__fb_rec.hovers})")
+            tape["navs"] = navs
+            tape["final_url"] = page.url
+        except Exception:
+            tape = {"clicks": [], "trail": [], "hovers": {}, "navs": navs,
+                    "final_url": last_url, "partial": True}
         try:
             dom = page.content()
         except Exception:
