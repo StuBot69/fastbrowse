@@ -1,0 +1,31 @@
+{
+ "cases": [
+  {
+   "label": "simple-dropdown",
+   "reveals": "#m1-menu",
+   "ok": true,
+   "effect": "clicked:m1-a",
+   "attempts": 1,
+   "sentinel_key": "EXPECTED-HOVER-OPEN",
+   "collapse_key": "EXPECTED-HOVER-CLOSED"
+  },
+  {
+   "label": "nested-submenu",
+   "reveals": "#m2-sub",
+   "ok": true,
+   "effect": "clicked:m2-a",
+   "attempts": 1,
+   "sentinel_key": "EXPECTED-HOVER-OPEN",
+   "collapse_key": "EXPECTED-HOVER-CLOSED"
+  },
+  {
+   "label": "intent-delay",
+   "reveals": "#m3-menu",
+   "ok": true,
+   "effect": "clicked:m3-a",
+   "attempts": 1,
+   "sentinel_key": "EXPECTED-HOVER-OPEN",
+   "collapse_key": "EXPECTED-HOVER-CLOSED"
+  }
+ ]
+}

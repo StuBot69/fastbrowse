@@ -73,18 +73,13 @@ def human_move(page: Page,
                base_duration: float = 0.8,
                jitter_px: float = 1.5,
                overshoot_chance: float = 0.05,
-               overshoot_px: float = 8.0) -> None:
+               overshoot_px: float = 8.0,
+               precise: bool = False) -> None:
     """
     Move mouse to (target_x, target_y) along a natural Bezier curve.
 
-    Args:
-        page: Playwright Page (or Camoufox page, same API).
-        target_x, target_y: Destination coordinates (viewport-relative).
-        steps: Number of intermediate points. Auto-calculated from distance if None.
-        base_duration: Base movement time in seconds (scales with distance).
-        jitter_px: Per-step positional noise (simulates hand tremor).
-        overshoot_chance: Probability of slightly overshooting then correcting.
-        overshoot_px: How far to overshoot if triggered.
+    precise=True: steady-hand mode for menu traversal — no bulge, no jitter,
+    no overshoot. Humans slow down and steady up crossing open menus too.
     """
     start_x, start_y = _get_mouse_pos(page)
 
@@ -101,7 +96,14 @@ def human_move(page: Page,
     if steps is None:
         steps = max(10, min(60, int(distance / 5)))
 
-    ctrl1, ctrl2 = _generate_control_points((start_x, start_y), (target_x, target_y))
+    if precise:
+        # Steady-hand: straight line, no bulge/jitter/overshoot.
+        ctrl1 = (start_x + dx / 3, start_y + dy / 3)
+        ctrl2 = (start_x + 2 * dx / 3, start_y + 2 * dy / 3)
+        jitter_px = 0.0
+        overshoot_chance = 0.0
+    else:
+        ctrl1, ctrl2 = _generate_control_points((start_x, start_y), (target_x, target_y))
     p0 = (start_x, start_y)
     p3 = (target_x, target_y)
 

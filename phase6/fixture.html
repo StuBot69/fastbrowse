@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hover fixture — FastBrowse phase 6</title>
+<style>
+  body { font-family: sans-serif; margin: 40px; }
+  /* 1. Simple dropdown: hover #m1 reveals #m1-menu */
+  #m1 { display: inline-block; padding: 10px 20px; background: #eee; }
+  #m1-menu { display: none; position: absolute; background: #fff; border: 1px solid #999; padding: 8px; }
+  #m1:hover #m1-menu, #m1-menu:hover { display: block; }
+  #m1-menu a { display: block; padding: 4px 12px; }
+  /* 2. Two-level: hover #m2a (inside #m2-menu) reveals #m2-sub */
+  #m2 { display: inline-block; padding: 10px 20px; background: #eee; margin-left: 20px; }
+  #m2-menu { display: none; position: absolute; background: #fff; border: 1px solid #999; padding: 8px; }
+  #m2:hover #m2-menu, #m2-menu:hover { display: block; }
+  #m2a { padding: 4px 12px; background: #f5f5f5; }
+  #m2-sub { display: none; position: absolute; left: 90px; top: 0; background: #fff; border: 1px solid #999; padding: 8px; }
+  #m2a:hover #m2-sub, #m2-sub:hover { display: block; }
+  /* 3. Hover-intent delay: #m3 reveals after 400ms (JS timer) */
+  #m3 { display: inline-block; padding: 10px 20px; background: #eee; margin-left: 20px; }
+  #m3-menu { display: none; position: absolute; background: #fff; border: 1px solid #999; padding: 8px; }
+</style>
+</head>
+<body>
+<h1>Hover fixture</h1>
+<div id="m1">Products
+  <div id="m1-menu">
+    <a id="m1-a" href="#widgets">Widgets</a>
+    <a id="m1-b" href="#gadgets">Gadgets</a>
+  </div>
+</div>
+<div id="m2">Services
+  <div id="m2-menu">
+    <div id="m2a">Consulting
+      <div id="m2-sub">
+        <a id="m2-a" href="#strategy">Strategy</a>
+        <a id="m2-b" href="#delivery">Delivery</a>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="m3">Delayed
+  <div id="m3-menu"><a id="m3-a" href="#slow">Slow link</a></div>
+</div>
+<div id="log" style="margin-top:200px;color:#666"></div>
+<script>
+  // hover-intent menu: opens 400ms after enter, closes 300ms after leave
+  const m3 = document.getElementById('m3'), m3m = document.getElementById('m3-menu');
+  let t = null;
+  m3.addEventListener('mouseenter', () => { t = setTimeout(() => { m3m.style.display = 'block'; }, 400); });
+  m3.addEventListener('mouseleave', () => { clearTimeout(t); setTimeout(() => { m3m.style.display = 'none'; }, 300); });
+  document.querySelectorAll('a').forEach(a => a.addEventListener('click', e => {
+    document.getElementById('log').textContent = 'clicked:' + a.id;
+  }));
+</script>
+</body>
+</html>
