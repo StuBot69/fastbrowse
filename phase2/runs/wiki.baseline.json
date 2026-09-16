@@ -1,0 +1,61 @@
+{
+ "step": "wiki",
+ "url": "https://en.wikipedia.org/wiki/Large_language_model",
+ "title": "Large language model - Wikipedia",
+ "ts": 1789526568.764456,
+ "ax_bytes": 7196005,
+ "dom_bytes": 1400490,
+ "screenshot_bytes": 277775,
+ "viewport": {
+  "width": 1366,
+  "height": 900
+ },
+ "regions": {
+  "header": {
+   "bytes": 44113,
+   "norm_bytes": 43691,
+   "hash": "543aec91e74c2482"
+  },
+  "nav": {
+   "bytes": 10515,
+   "norm_bytes": 10217,
+   "hash": "5688a5c191070676"
+  },
+  "main": {
+   "bytes": 2280579,
+   "norm_bytes": 2272905,
+   "hash": "e4f5b524343954a6"
+  },
+  "footer": {
+   "bytes": 3838,
+   "norm_bytes": 3804,
+   "hash": "6400161e8ee47510"
+  }
+ },
+ "strips": {
+  "0": {
+   "hash": "65de63ae10041359",
+   "bytes": 24605
+  },
+  "1": {
+   "hash": "f2c2d98c9b569aa6",
+   "bytes": 19956
+  },
+  "2": {
+   "hash": "3c1df5de76e5e052",
+   "bytes": 52229
+  },
+  "3": {
+   "hash": "3dfb78dbb48e505d",
+   "bytes": 66844
+  },
+  "4": {
+   "hash": "fd9ba583fc215117",
+   "bytes": 57199
+  },
+  "5": {
+   "hash": "4fe13190d61851cb",
+   "bytes": 57644
+  }
+ }
+}

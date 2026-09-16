@@ -1,0 +1,61 @@
+{
+ "step": "bbc",
+ "url": "https://www.bbc.co.uk/",
+ "title": "BBC - Home",
+ "ts": 1789526513.46182,
+ "ax_bytes": 1249203,
+ "dom_bytes": 832040,
+ "screenshot_bytes": 550961,
+ "viewport": {
+  "width": 1366,
+  "height": 900
+ },
+ "regions": {
+  "header": {
+   "bytes": 27164,
+   "norm_bytes": 27164,
+   "hash": "9c3d8486fab56e1c"
+  },
+  "nav": {
+   "bytes": 25282,
+   "norm_bytes": 25282,
+   "hash": "2a54bb03147eb094"
+  },
+  "main": {
+   "bytes": 308249,
+   "norm_bytes": 308245,
+   "hash": "32d641e171c6035e"
+  },
+  "footer": {
+   "bytes": 39302,
+   "norm_bytes": 39302,
+   "hash": "496bbdf87c8668d8"
+  }
+ },
+ "strips": {
+  "0": {
+   "hash": "ed4704a751a5488e",
+   "bytes": 15080
+  },
+  "1": {
+   "hash": "62d83cc9334f84f1",
+   "bytes": 144963
+  },
+  "2": {
+   "hash": "576d35e3d6004600",
+   "bytes": 167073
+  },
+  "3": {
+   "hash": "89721fc0534fe852",
+   "bytes": 118715
+  },
+  "4": {
+   "hash": "b2b7c33fcfc109dd",
+   "bytes": 92880
+  },
+  "5": {
+   "hash": "3702b34a2a78ba32",
+   "bytes": 29728
+  }
+ }
+}

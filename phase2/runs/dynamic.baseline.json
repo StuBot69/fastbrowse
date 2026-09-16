@@ -1,0 +1,61 @@
+{
+ "step": "dynamic",
+ "url": "https://edition.cnn.com/",
+ "title": "Breaking News, Latest News and Videos | CNN",
+ "ts": 1789526623.811212,
+ "ax_bytes": 1247857,
+ "dom_bytes": 6114343,
+ "screenshot_bytes": 266957,
+ "viewport": {
+  "width": 1366,
+  "height": 900
+ },
+ "regions": {
+  "header": {
+   "bytes": 225747,
+   "norm_bytes": 206132,
+   "hash": "e2ef39f2e4ae7c4e"
+  },
+  "nav": {
+   "bytes": 239970,
+   "norm_bytes": 225142,
+   "hash": "84c6cfebdb7f62f1"
+  },
+  "main": {
+   "bytes": 761509,
+   "norm_bytes": 722337,
+   "hash": "9a56244e30aa0a65"
+  },
+  "footer": {
+   "bytes": 159561,
+   "norm_bytes": 151727,
+   "hash": "5283b1bda7e2e6cc"
+  }
+ },
+ "strips": {
+  "0": {
+   "hash": "f6bfbf6c0bb05ab4",
+   "bytes": 1052
+  },
+  "1": {
+   "hash": "5050f82c8e85f3fd",
+   "bytes": 9794
+  },
+  "2": {
+   "hash": "c98c2eb1f52e2624",
+   "bytes": 47643
+  },
+  "3": {
+   "hash": "53bf394b7216e349",
+   "bytes": 113887
+  },
+  "4": {
+   "hash": "ad137bdd831e190e",
+   "bytes": 56603
+  },
+  "5": {
+   "hash": "859e868776e4b019",
+   "bytes": 40414
+  }
+ }
+}
