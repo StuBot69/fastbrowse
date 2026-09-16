@@ -153,7 +153,9 @@ class ProfileStore:
         return [p for p in self.profiles if p["site"] == site]
 
     def upsert(self, *, site: str, overlay_signature: str, overlay_kind: str,
-               selector: str, action: str, overlay_bytes: int = 0) -> tuple[dict, bool]:
+               selector: str, action: str, overlay_bytes: int = 0,
+               frame_url_pattern: str = "",
+               frame_inner_selector: str = "") -> tuple[dict, bool]:
         """Insert or refresh a profile. Returns (profile, created)."""
         now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
         existing = self.find(site, overlay_signature)
@@ -162,6 +164,10 @@ class ProfileStore:
                             last_seen=now, hits=existing.get("hits", 1) + 1)
             if overlay_bytes:
                 existing["overlay_bytes"] = overlay_bytes
+            if frame_url_pattern:
+                existing["frame_url_pattern"] = frame_url_pattern
+            if frame_inner_selector:
+                existing["frame_inner_selector"] = frame_inner_selector
             self.save()
             return existing, False
         profile = {
@@ -169,6 +175,8 @@ class ProfileStore:
             "overlay_kind": overlay_kind, "selector": selector, "action": action,
             "first_seen": now, "last_seen": now, "hits": 1,
             "overlay_bytes": overlay_bytes,
+            "frame_url_pattern": frame_url_pattern,
+            "frame_inner_selector": frame_inner_selector,
         }
         self.profiles.append(profile)
         self.save()
@@ -270,29 +278,264 @@ def pick_candidate(cands: list[dict], selector: str | None = None) -> dict | Non
 
 
 # ---------------------------------------------------------------------------
+# Frame-aware overlay support (phase 4 fix — iframe + shadow DOM banners)
+#
+# Problem (phase 3 limitation #1): Sourcepoint/OneTrust/Quantcast banners
+# render the dismiss button INSIDE an <iframe>; the recorded top-level
+# selector hits the container, never the button. Fix: at record time
+# descend into overlay iframes and store frame_url_pattern (domain+path,
+# never exact URL — session tokens rotate) + frame_inner_selector; at
+# apply time match the frame by pattern and click inside it via
+# frame.locator(inner). Shadow-DOM banners are handled with ">>>"
+# shadow-piercing selectors resolved by JS traversal (Playwright has no
+# native >>> support).
+# ---------------------------------------------------------------------------
+
+from urllib.parse import urlparse as _urlparse  # noqa: E402
+
+#: Inner dismiss buttons probed inside overlay iframes, most-likely first.
+INNER_DISMISS_CANDIDATES = [
+    'button:has-text("Reject all")',
+    'button:has-text("Reject")',
+    'button:has-text("No, thanks")',
+    'button:has-text("No thanks")',
+    '[aria-label="Close"]',
+    '[aria-label="Dismiss"]',
+    'button:has-text("Close")',
+    'button:has-text("Got it")',
+    'button:has-text("Accept")',
+    '#sp_message_container_1482252 button',
+]
+
+#: JS run inside a frame (or page) that shadow-pierces a ">>>" selector
+#: chain and clicks the first match. Returns true on success.
+_SHADOW_CLICK_JS = """(sel) => {
+  const parts = sel.split('>>>').map(s => s.trim()).filter(Boolean);
+  let roots = [document];
+  for (const part of parts) {
+    const next = [];
+    for (const root of roots) {
+      const scope = (root.shadowRoot) ? root.shadowRoot : root;
+      try { scope.querySelectorAll(part).forEach(el => next.push(el)); } catch(e) {}
+      // also descend one shadow level for plain (non->>> ) subtrees
+      try {
+        scope.querySelectorAll('*').forEach(el => {
+          if (el.shadowRoot) {
+            try { el.shadowRoot.querySelectorAll(part).forEach(x => next.push(x)); } catch(e2) {}
+          }
+        });
+      } catch(e) {}
+    }
+    if (!next.length) return 'miss:' + part;
+    roots = next;
+  }
+  const el = roots[0];
+  if (el) { el.click(); return 'clicked'; }
+  return 'miss';
+}"""
+
+
+def frame_url_pattern(url: str) -> str:
+    """Reduce a frame URL to a stable `domain+path` pattern.
+
+    Drops scheme, query, fragment, and trailing numeric session segments
+    so per-session tokens never break frame matching.
+    """
+    try:
+        u = _urlparse(url)
+    except Exception:
+        return url.lower().strip()
+    host = (u.hostname or "").lower().strip()
+    path = u.path or "/"
+    # strip trailing all-digit segments (session ids, timestamps)
+    segs = [s for s in path.split("/") if s]
+    while segs and re.fullmatch(r"\d{4,}", segs[-1]):
+        segs.pop()
+    path = "/" + "/".join(segs) if segs else "/"
+    return f"{host}{path}"
+
+
+def frame_matches(pattern: str, url: str) -> bool:
+    """True when `url` falls under the stored domain+path `pattern`."""
+    if not pattern:
+        return False
+    try:
+        u = _urlparse(url)
+    except Exception:
+        return False
+    host = (u.hostname or "").lower()
+    path = u.path or "/"
+    if "://" in pattern or pattern.startswith("http"):
+        pattern = frame_url_pattern(pattern)
+    if "/" in pattern:
+        phost, _, ppath = pattern.partition("/")
+        ppath = "/" + ppath
+    else:
+        phost, ppath = pattern, "/"
+    if host != phost and not host.endswith("." + phost):
+        return False
+    # pattern path is a prefix of the live path ("/" matches everything)
+    if ppath in ("/", ""):
+        return True
+    return path == ppath or path.startswith(ppath.rstrip("/") + "/")
+
+
+def split_shadow_selector(selector: str) -> list[str]:
+    """Split a `a >>> b >>> c` shadow-piercing chain into parts."""
+    return [p.strip() for p in selector.split(">>>") if p.strip()]
+
+
+def _iter_frames(page) -> list:
+    """Return live frame objects for real or fake pages (never raises)."""
+    try:
+        if hasattr(page, "frames"):
+            frames = page.frames  # real Playwright page: property -> list
+            if callable(frames):
+                frames = frames()
+            return list(frames)
+    except Exception:
+        pass
+    try:
+        if hasattr(page, "_frames"):
+            return list(page._frames)
+    except Exception:
+        pass
+    return []
+
+
+def _frame_url(frame) -> str:
+    try:
+        url = frame.url
+        return url() if callable(url) else (url or "")
+    except Exception:
+        return ""
+
+
+def find_frame(page, pattern: str):
+    """First live frame whose URL matches `pattern` (domain+path)."""
+    for fr in _iter_frames(page):
+        if frame_matches(pattern, _frame_url(fr)):
+            return fr
+    return None
+
+
+def _locator_count(loc) -> int:
+    try:
+        c = loc.count
+        return c() if callable(c) else int(c)
+    except Exception:
+        return 1  # fake locators without count(): assume present
+
+
+def probe_frame_button(frame, candidates: list[str] | None = None) -> str | None:
+    """First inner-dismiss selector that resolves inside `frame`."""
+    for sel in (candidates or INNER_DISMISS_CANDIDATES):
+        try:
+            loc = frame.locator(sel)
+            if _locator_count(loc) > 0:
+                return sel
+        except Exception:
+            continue
+    return None
+
+
+def shadow_click(target, selector: str, timeout: int = 5000) -> bool:
+    """Click `selector` on a page-or-frame, piercing `>>>` shadow chains.
+
+    Plain selectors go through locator().click(); shadow chains go through
+    JS shadow traversal + click. Returns True on success, raises on miss
+    when the target exposes no JS evaluate path.
+    """
+    if ">>>" not in selector:
+        target.locator(selector).click(timeout=timeout)
+        return True
+    # shadow chain: prefer in-frame JS traversal (works on real + fake)
+    if hasattr(target, "evaluate"):
+        try:
+            res = target.evaluate(_SHADOW_CLICK_JS, selector)
+            if isinstance(res, str) and res == "clicked":
+                return True
+            raise RuntimeError(f"shadow selector missed: {res}")
+        except RuntimeError:
+            raise
+        except Exception as e:
+            raise RuntimeError(f"shadow click failed: {e}")
+    # fake without evaluate: drill locator chain manually
+    loc = None
+    for part in split_shadow_selector(selector):
+        loc = target.locator(part) if loc is None else loc.locator(part)
+    loc.click(timeout=timeout)
+    return True
+
+
+def record_frame_binding(page, candidate: dict,
+                         candidates: list[str] | None = None) -> dict:
+    """Descend into the overlay iframe for `candidate`; return binding.
+
+    Returns {frame_url_pattern, frame_inner_selector} (empty strings when
+    the overlay is not iframe-hosted or no inner button resolves).
+    """
+    if not candidate or candidate.get("tag") != "IFRAME":
+        if (candidate or {}).get("why") != "consent-iframe":
+            return {"frame_url_pattern": "", "frame_inner_selector": ""}
+    src = (candidate or {}).get("iframe_src", "") or ""
+    frames = _iter_frames(page)
+    # Prefer the frame whose live URL sits under the shell src's domain+path;
+    # fall back to probing every frame for a dismiss button.
+    ordered: list = []
+    if src:
+        pat = frame_url_pattern(src)
+        ordered = [fr for fr in frames if frame_matches(pat, _frame_url(fr))]
+        ordered += [fr for fr in frames if fr not in ordered]
+    else:
+        ordered = list(frames)
+    pattern_hint = frame_url_pattern(src) if src else ""
+    for fr in ordered:
+        inner = probe_frame_button(fr, candidates)
+        if inner:
+            return {"frame_url_pattern": frame_url_pattern(_frame_url(fr)) or pattern_hint,
+                    "frame_inner_selector": inner}
+    return {"frame_url_pattern": pattern_hint, "frame_inner_selector": ""}
+
+
+# ---------------------------------------------------------------------------
 # Recorder / Matcher / Applier
 # ---------------------------------------------------------------------------
 
 def record(page, selector: str, action: str, store: ProfileStore | None = None,
-           overlay_html: str | None = None, kind: str | None = None) -> dict:
+           overlay_html: str | None = None, kind: str | None = None,
+           frame_url_pattern: str | None = None,
+           frame_inner_selector: str | None = None) -> dict:
     """Save/update the profile for the overlay `selector`+`action` just dismissed.
 
+    If the overlay lives inside an iframe, descend at record time and store
+    frame_url_pattern (domain+path) + frame_inner_selector so apply() can
+    click inside the frame. Explicit frame_* args override auto-detection.
     Returns the stored profile dict.
     """
     if action not in ACTIONS:
         raise ValueError(f"action must be one of {ACTIONS}, got {action!r}")
     store = store or ProfileStore()
     site = etld1(page.url)
+    binding = {"frame_url_pattern": frame_url_pattern or "",
+               "frame_inner_selector": frame_inner_selector or ""}
     if overlay_html is None:
         cand = pick_candidate(find_candidates(page), selector)
         overlay_html = ((cand or {}).get("html") or "")
         kind = kind or ((cand or {}).get("kind") or "modal")
+        if frame_url_pattern is None and frame_inner_selector is None:
+            try:
+                binding = record_frame_binding(page, cand or {})
+            except Exception:
+                binding = {"frame_url_pattern": "", "frame_inner_selector": ""}
     kind = kind or classify_kind("", overlay_html or "")
     norm = normalize_overlay(overlay_html[:OVERLAY_HTML_CAP])
     sig = overlay_signature(norm)
     profile, _ = store.upsert(site=site, overlay_signature=sig, overlay_kind=kind,
                               selector=selector, action=action,
-                              overlay_bytes=len(overlay_html.encode("utf-8")))
+                              overlay_bytes=len(overlay_html.encode("utf-8")),
+                              frame_url_pattern=binding.get("frame_url_pattern", ""),
+                              frame_inner_selector=binding.get("frame_inner_selector", ""))
     return profile
 
 
@@ -345,9 +588,25 @@ def planner_cost_bytes(page) -> dict:
             "total": ax_bytes + dom_bytes}
 
 
+def _click_target(page, selector: str, timeout: int = 5000) -> None:
+    """Click `selector` on the page, piercing `>>>` shadow chains."""
+    if ">>>" in selector:
+        shadow_click(page, selector, timeout=timeout)
+        return
+    loc = getattr(page, "locator", None)
+    if callable(loc):
+        loc(selector).click(timeout=timeout)
+        return
+    page.click(selector, timeout=timeout)  # type: ignore[attr-defined]
+
+
 def apply(page, disposition: dict) -> dict:
     """Execute the recorded action, verify the overlay is gone, report one line.
 
+    Frame-aware: when the profile carries frame_url_pattern +
+    frame_inner_selector, match the live frame by domain+path (never exact
+    URL) and click the inner selector via frame.locator. `>>>`
+    shadow-piercing selectors work on both frame and page targets.
     Returns {handled, site, kind, selector, action, oneliner, ...}.
     """
     profile = disposition.get("profile")
@@ -358,14 +617,43 @@ def apply(page, disposition: dict) -> dict:
         return {"handled": False, "site": site, "kind": (disposition.get("candidate") or {}).get("kind", "?"),
                 "oneliner": oneliner, "reason": reason}
     selector, action, kind = profile["selector"], profile["action"], profile["overlay_kind"]
+    frame_pat = profile.get("frame_url_pattern", "") or ""
+    frame_inner = profile.get("frame_inner_selector", "") or ""
     before = pick_candidate(find_candidates(page))
+    clicked_via = "page"
     try:
-        page.click(selector, timeout=5000)
-        page.wait_for_timeout(900)
+        if frame_pat and frame_inner:
+            fr = find_frame(page, frame_pat)
+            if fr is None:
+                raise RuntimeError(f"no live frame matches {frame_pat}")
+            shadow_click(fr, frame_inner, timeout=5000)
+            clicked_via = f"frame:{frame_pat}"
+        else:
+            _click_target(page, selector, timeout=5000)
+        try:
+            page.wait_for_timeout(900)
+        except Exception:
+            pass
     except Exception as e:
-        oneliner = f"FAILED {site} {kind} ({action} {selector}): {str(e)[:100]}"
-        return {"handled": False, "site": site, "kind": kind, "selector": selector,
-                "action": action, "oneliner": oneliner, "error": str(e)[:200]}
+        # frame path failed but a plain page selector exists -> one fallback
+        if clicked_via.startswith("frame:"):
+            try:
+                _click_target(page, selector, timeout=5000)
+                clicked_via = "page-fallback"
+                try:
+                    page.wait_for_timeout(900)
+                except Exception:
+                    pass
+            except Exception as e2:
+                oneliner = f"FAILED {site} {kind} ({action} {selector}): {str(e2)[:100]}"
+                return {"handled": False, "site": site, "kind": kind, "selector": selector,
+                        "action": action, "oneliner": oneliner, "error": str(e2)[:200],
+                        "clicked_via": clicked_via, "frame_error": str(e)[:200]}
+        else:
+            oneliner = f"FAILED {site} {kind} ({action} {selector}): {str(e)[:100]}"
+            return {"handled": False, "site": site, "kind": kind, "selector": selector,
+                    "action": action, "oneliner": oneliner, "error": str(e)[:200],
+                    "clicked_via": clicked_via}
     after = find_candidates(page)
     gone = not any(c["visible"] and c["signature"] == (before or {}).get("signature") for c in after)
     if not gone and before:
@@ -373,7 +661,8 @@ def apply(page, disposition: dict) -> dict:
                        for c in after)
     oneliner = f"handled {site} {kind} ({action} {selector})"
     return {"handled": bool(gone), "site": site, "kind": kind, "selector": selector,
-            "action": action, "oneliner": oneliner, "verified_gone": bool(gone)}
+            "action": action, "oneliner": oneliner, "verified_gone": bool(gone),
+            "clicked_via": clicked_via}
 
 
 # ---------------------------------------------------------------------------
