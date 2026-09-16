@@ -30,6 +30,21 @@ RECORDER_JS = """(() => {
   if (window.__fb_rec) return;
   window.__fb_rec = { clicks: [], trail: [], hovers: {}, navs: [], done: false };
   const R = window.__fb_rec;
+  // Restore clicks/trail saved by previous pages in this flow: clicks that
+  // CAUSE navigation die with their document — localStorage carries them over.
+  try {
+    const s = JSON.parse(localStorage.getItem('__fb_tape') || 'null');
+    if (s) {
+      if (Array.isArray(s.clicks)) R.clicks = s.clicks;
+      if (Array.isArray(s.trail)) R.trail = s.trail.slice(-500);
+    }
+  } catch (e) { /* fresh flow */ }
+  const persist = () => {
+    try {
+      localStorage.setItem('__fb_tape', JSON.stringify(
+        { clicks: R.clicks, trail: R.trail.slice(-500) }));
+    } catch (e) { /* private mode etc */ }
+  };
   const sel = (el) => {
     if (!el || el === document.body) return 'body';
     const parts = [];
@@ -71,7 +86,9 @@ RECORDER_JS = """(() => {
     R.clicks.push({ selector: sel(e.target), x: Math.round(e.clientX), y: Math.round(e.clientY),
       w: Math.round(r.width), h: Math.round(r.height), t: Date.now(),
       text: (e.target.innerText || '').slice(0, 80) });
+    persist();
   }, { passive: true, capture: true });
+  window.addEventListener('beforeunload', persist);
   // finish badge (deferred: init-script DOM may not accept appends yet)
   const badge = document.createElement('div');
   badge.id = '__fb_badge';
@@ -109,11 +126,22 @@ def learn_session(start_url: str, outdir: Path, profile_dir: Path,
             page = browser.new_context().new_page()
         page.add_init_script(RECORDER_JS)
         page.goto(start_url, wait_until="domcontentloaded", timeout=45000)
+        try:
+            # fresh flow: drop any previous session's mirrored tape
+            page.evaluate("() => localStorage.removeItem('__fb_tape')")
+        except Exception:
+            pass
         print("LEARN: drive the flow in the Camoufox window. Click the red REC badge when done.")
         print("LEARN: closing the window also finishes (partial tape is saved).")
         last_url = page.url
         navs: list = []
         closed_early = False
+        # Python-side tape mirror: page documents die on navigation, so every
+        # poll merges new clicks/trail here. Survives cross-origin navs where
+        # localStorage cannot follow.
+        py_clicks: list = []
+        py_trail: list = []
+        seen_click_keys: set = set()
         while True:
             try:
                 page.wait_for_timeout(1000)
@@ -131,6 +159,21 @@ def learn_session(start_url: str, outdir: Path, profile_dir: Path,
                 st = page.evaluate(
                     "() => window.__fb_rec ? {done: window.__fb_rec.done, "
                     "clicks: window.__fb_rec.clicks.length, trail: window.__fb_rec.trail.length} : null")
+                # mirror the tape Python-side (deduped) — survives navs
+                try:
+                    bulk = page.evaluate(
+                        "() => window.__fb_rec ? {clicks: window.__fb_rec.clicks, "
+                        "trail: window.__fb_rec.trail.slice(-200)} : null")
+                    if bulk:
+                        for c in bulk.get("clicks", []):
+                            key = (c.get("t"), c.get("selector"))
+                            if key not in seen_click_keys:
+                                seen_click_keys.add(key)
+                                py_clicks.append(c)
+                        py_trail.extend(bulk.get("trail", [])[-50:])
+                        py_trail = py_trail[-2000:]
+                except Exception:
+                    pass
             except Exception:
                 st = None
             if st:
@@ -150,6 +193,13 @@ def learn_session(start_url: str, outdir: Path, profile_dir: Path,
         except Exception:
             tape = {"clicks": [], "trail": [], "hovers": {}, "navs": navs,
                     "final_url": last_url, "partial": True}
+        # Python-side mirror wins on clicks/trail: it spans navigations.
+        if py_clicks:
+            known = {(c.get("t"), c.get("selector")) for c in tape.get("clicks", [])}
+            tape["clicks"] = tape.get("clicks", []) + [
+                c for c in py_clicks if (c.get("t"), c.get("selector")) not in known]
+        if len(py_trail) > len(tape.get("trail", [])):
+            tape["trail"] = py_trail
         try:
             dom = page.content()
         except Exception:
