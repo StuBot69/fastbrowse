@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+phase1/snapshots*/
+phase1/*.ax.json
+phase1/*.dom.html
+.DS_Store
