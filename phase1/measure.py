@@ -227,6 +227,8 @@ def report(records: list) -> str:
 MESSY_CANDIDATES = [
     "https://www.dailymail.co.uk/home/index.html",
     "https://www.thesun.co.uk/",
+    "https://www.theguardian.com/uk",
+    "https://edition.cnn.com/",
     "https://www.bbc.co.uk/news",
 ]
 
@@ -267,6 +269,19 @@ def run_messy(outdir: Path, headless: bool = True) -> tuple:
             try:
                 page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 page.wait_for_timeout(2500)
+                # Blocker check: bot walls return HTTP-200 stubs ("Access
+                # Denied", consent-only shells). Skip on tiny/denied content.
+                try:
+                    dom_len = len(page.content() or "")
+                    title = page.title() or ""
+                except Exception:
+                    dom_len, title = 0, ""
+                if dom_len < 20000 or title.strip() in (
+                        "Access Denied", "Verifying Device") \
+                        or "Access Denied" in (page.url or ""):
+                    meta.setdefault("blocked", {})[url] = (
+                        f"bot-wall stub (dom={dom_len} title={title!r})")
+                    continue
                 landed = url
                 break
             except Exception as e:
