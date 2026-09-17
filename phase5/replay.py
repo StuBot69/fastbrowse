@@ -65,6 +65,11 @@ def tape_to_actions(tape: dict, navs: list[dict] | None = None) -> list[dict]:
         a = {"label": (c.get("text") or c["selector"])[:60],
              "selector": c["selector"],
              "trail_to": [c.get("x"), c.get("y")]}
+        # stable href anchor beats generated class soup: click by
+        # destination href (self-links are not navigation — runner verifies
+        # the url actually changed, rule #9).
+        if c.get("href"):
+            a["href"] = c["href"]
         # if this click's timestamp precedes a nav, expect that destination
         for d in dests:
             if c.get("t") and _nav_after(navs, c["t"]):
@@ -173,7 +178,8 @@ def main() -> dict | None:
     store = ProfileStore(HERE / "runs-camofox" / "profiles.json")
     outdir = Path(args.out)
     outdir.mkdir(parents=True, exist_ok=True)
-    report: dict = {"tape": str(tapedir), "url": args.url, "n_actions": len(actions)}
+    report: dict = {"tape": str(tapedir), "url": args.url, "n_actions": len(actions),
+                    "_out": str(outdir)}
     if args.engine == "camofox":
         with Camoufox(headless=args.headless) as browser:
             return _replay_flow(browser, store, report, actions)

@@ -172,6 +172,17 @@ def run_blind(page, actions: list, baseline, store: ProfileStore | None = None,
                     strikes += 1
             elif "selector" in a:
                 sel = a["selector"]
+                # href anchor (recorded closest a[href]) beats generated class
+                # soup: stable across deploys. Falls back to recorded selector.
+                href = a.get("href")
+                if href:
+                    try:
+                        hloc = page.locator(f'a[href="{href}"]').first
+                        if hloc.count() > 0:
+                            sel = f'a[href="{href}"]'
+                            ev["href_anchor"] = True
+                    except Exception:
+                        pass
                 try:
                     if a.get("first"):
                         loc = page.locator(sel).first
@@ -311,6 +322,7 @@ def _demo_flow(browser, outdir: Path, store: ProfileStore, engine: str) -> dict:
                        for c in cands],
     }
     recorded = []
+    link_href = ""
     # Record ONE banner: prefer the OneTrust SDK root; fall back to the
     # biggest visible consent/modal candidate. Page furniture (sidebars,
     # header backgrounds) must NOT become profiles.
@@ -355,19 +367,18 @@ def _demo_flow(browser, outdir: Path, store: ProfileStore, engine: str) -> dict:
             except Exception as e:
                 recorded.append({"kind": c["kind"], "error": str(e)[:100]})
                 break
-        report["first_visit"]["recorded"] = recorded
-        # Learn ONE nav destination into the map (first /wiki/ link, other slug).
-        link_href = ""
-        try:
-            for h in page.eval_on_selector_all(
-                    ".mw-parser-output a[href^='/wiki/']",
-                    "els => els.map(e => e.getAttribute('href'))"):
-                if h and h.startswith("/wiki/") and ":" not in h and h.rstrip("/") != "/wiki/Luke_Skywalker":
-                    link_href = h
-                    break
-        except Exception:
-            pass
-        report["first_visit"]["map_link"] = link_href
+    report["first_visit"]["recorded"] = recorded
+    # Learn ONE nav destination into the map (first /wiki/ link, other slug).
+    try:
+        for h in page.eval_on_selector_all(
+                ".mw-parser-output a[href^='/wiki/']",
+                "els => els.map(e => e.getAttribute('href'))"):
+            if h and h.startswith("/wiki/") and ":" not in h and h.rstrip("/") != "/wiki/Luke_Skywalker":
+                link_href = h
+                break
+    except Exception:
+        pass
+    report["first_visit"]["map_link"] = link_href
     # baseline for blind gate = block set (similarity-gated, not exact)
     baseline = main_region_blocks(page)
     try:

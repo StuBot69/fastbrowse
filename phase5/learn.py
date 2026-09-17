@@ -45,16 +45,45 @@ RECORDER_JS = """(() => {
         { clicks: R.clicks, trail: R.trail.slice(-500) }));
     } catch (e) { /* private mode etc */ }
   };
+  const HASHED_RE = /--[A-Za-z0-9_]{4,6}$|__[A-Za-z0-9]+|^(dcr|css)-[a-z0-9]{5,8}$/;
+  const stableCls = (el) => ((el.className && typeof el.className === 'string') ?
+    el.className.trim().split(/\s+/).filter(c => c && !HASHED_RE.test(c)).slice(0, 2) : []);
   const sel = (el) => {
     if (!el || el === document.body) return 'body';
+    // stable single-element anchors first (no brittle ancestor chain)
+    if (el.id && !HASHED_RE.test(el.id)) return el.tagName.toLowerCase() + '#' + el.id;
+    if (el.getAttribute) {
+      for (const a of ['data-testid', 'data-test', 'data-cy', 'data-qa']) {
+        const v = el.getAttribute(a);
+        if (v) return el.tagName.toLowerCase() + `[${a}="${v}"]`;
+      }
+    }
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+      const bits = [];
+      const t = el.getAttribute && el.getAttribute('type'); if (t) bits.push(`[type="${t}"]`);
+      const n = el.getAttribute && el.getAttribute('name'); if (n) bits.push(`[name="${n}"]`);
+      const ph = el.getAttribute && el.getAttribute('placeholder'); if (ph) bits.push(`[placeholder="${ph.slice(0, 40)}"]`);
+      const al = el.getAttribute && el.getAttribute('aria-label'); if (al) bits.push(`[aria-label="${al.slice(0, 40)}"]`);
+      if (bits.length) return el.tagName.toLowerCase() + bits.join('');
+    }
+    if (el.tagName === 'A' && el.getAttribute) {
+      const h = el.getAttribute('href');
+      if (h && h.length < 160 && !HASHED_RE.test(h)) return `a[href="${h}"]`;
+    }
     const parts = [];
     while (el && el !== document.body && parts.length < 5) {
       let s = el.tagName.toLowerCase();
-      if (el.id) { s += '#' + el.id; parts.unshift(s); break; }
-      if (el.className && typeof el.className === 'string') {
-        const c = el.className.trim().split(/\\s+/).slice(0, 2).join('.');
-        if (c) s += '.' + c;
+      if (el.id && !HASHED_RE.test(el.id)) { s += '#' + el.id; parts.unshift(s); break; }
+      if (el.getAttribute) {
+        let anchored = false;
+        for (const a of ['data-testid', 'data-test', 'data-cy', 'data-qa']) {
+          const v = el.getAttribute(a);
+          if (v) { s += `[${a}="${v}"]`; parts.unshift(s); anchored = true; break; }
+        }
+        if (anchored) break;
       }
+      const sc = stableCls(el);
+      if (sc.length) s += '.' + sc.join('.');
       const sibs = el.parentElement ? [...el.parentElement.children].filter(e => e.tagName === el.tagName) : [];
       if (sibs.length > 1) s += `:nth-of-type(${sibs.indexOf(el) + 1})`;
       parts.unshift(s);
@@ -83,9 +112,11 @@ RECORDER_JS = """(() => {
   }, { passive: true, capture: true });
   document.addEventListener('click', (e) => {
     const r = e.target.getBoundingClientRect();
+    const a = e.target.closest ? e.target.closest('a[href]') : null;
     R.clicks.push({ selector: sel(e.target), x: Math.round(e.clientX), y: Math.round(e.clientY),
       w: Math.round(r.width), h: Math.round(r.height), t: Date.now(),
-      text: (e.target.innerText || '').slice(0, 80) });
+      text: (e.target.innerText || '').slice(0, 80),
+      href: a ? a.getAttribute('href') : null });
     persist();
   }, { passive: true, capture: true });
   window.addEventListener('beforeunload', persist);
