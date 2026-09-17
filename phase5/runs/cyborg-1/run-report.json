@@ -1,0 +1,92 @@
+{
+ "query": "white haired female cyborg",
+ "mode": "full-observation",
+ "steps": [
+  {
+   "name": "search_load",
+   "s": 5.0,
+   "dom_bytes": 2043618,
+   "title": "40,000+ Free White Haired Female Cyborg & Woman Images - Pix",
+   "outcome": "OK-FULL"
+  },
+  {
+   "name": "consent_reject",
+   "s": 0.0,
+   "outcome": "SKIP-NONE-VISIBLE"
+  },
+  {
+   "name": "collect_links",
+   "s": 0.1,
+   "n_photo_pages": 97,
+   "pick_score": 3,
+   "fallback": false,
+   "alt": "Free Girl Black And White photo and picture",
+   "href": "/photos/girl-black-and-white-light-profile-2806276/",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "photo_load",
+   "s": 3.1,
+   "dom_bytes": 533403,
+   "title": "Girl Black And White Light - Free photo on Pixabay",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "free_download_click",
+   "s": 2.2,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "save",
+   "s": 1.0,
+   "via": "download-event",
+   "saved": "clickerhappy-girl-2806276.jpg",
+   "bytes": 1120368,
+   "outcome": "OK-BLIND"
+  }
+ ],
+ "blockers": [],
+ "downloads": [
+  {
+   "file": "clickerhappy-girl-2806276.jpg",
+   "bytes": 1120368,
+   "url": "https://pixabay.com/get/g67c3bb1f1f25002e82da93d4532751dc98882b58e86216d8fffc135ba3974fd0dde2269a47c7aeb4fb61d11cb2f40cb"
+  }
+ ],
+ "learned_actions": [
+  {
+   "label": "pixabay-search-url",
+   "url_template": "https://pixabay.com/images/search/<terms>/",
+   "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
+  },
+  {
+   "label": "photo-link",
+   "selector": "a[href*='/photos/'], a[href*='/illustrations/'], a[href*='/vectors/']",
+   "href": "/photos/girl-black-and-white-light-profile-2806276/",
+   "note": "stable href anchor; alt/slug scored for refined ask"
+  },
+  {
+   "label": "free-download-open",
+   "selector": "button:has-text('Free download')",
+   "note": "positional, no stable attrs; opens dialog"
+  },
+  {
+   "label": "original-menuitem",
+   "selector": "[role=menuitem]:has-text('Original')",
+   "note": "Original races download+nav \u2014 click tolerantly, poll handler (rule #15)"
+  }
+ ],
+ "total_s": 16.7,
+ "planner_bytes": 2577021,
+ "sentinel_bytes": 784,
+ "strikes": 0,
+ "tokens": {
+  "llm_prompt": 0,
+  "llm_completion": 0,
+  "llm_calls": 0,
+  "planner_bytes": 2577021,
+  "est_observation_tokens": 644255,
+  "note": "browser loop makes zero LLM calls; observation cost that WOULD be tokens = planner_bytes (~bytes/4 tokens, estimate)"
+ },
+ "pics_sink": "/Users/user/Downloads/pictures"
+}
