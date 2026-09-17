@@ -73,6 +73,64 @@ def gate_similarity(live_blocks: frozenset, base_blocks: frozenset) -> float:
     return len(base_blocks & live_blocks) / len(union)
 
 
+SITES_DIR = HERE.parent / "phase5" / "sites"  # learned site knowledge
+
+
+def visual_hash(page, size: int = 16) -> tuple[str, int]:
+    """Cheap pixel-map fingerprint: low-res grayscale dHash of main region.
+
+    Returns (hex_hash, approx_bytes_read). size=16 -> 256px, ~1KB work.
+    Difference-hash (not exact pixels): survives DPR/anti-aliasing/viewport
+    wobble that would nuke a byte-compare. Larger Hamming distance = bigger
+    visual change.
+    """
+    try:
+        import io
+        from PIL import Image
+        try:
+            el = page.query_selector("main, [role=main], #content, #bodyContent")
+            raw = el.screenshot(timeout=5000) if el else page.screenshot(timeout=5000)
+        except Exception:
+            raw = page.screenshot(timeout=5000)
+        img = Image.open(io.BytesIO(raw)).convert("L").resize(
+            (size + 1, size), Image.Resampling.BILINEAR)
+        px = list(img.getdata())
+        bits = 0
+        for y in range(size):
+            for x in range(size):
+                bits = (bits << 1) | (
+                    1 if px[y * (size + 1) + x] > px[y * (size + 1) + x + 1] else 0)
+        return format(bits, "064x")[-64:], (size + 1) * size
+    except Exception:
+        return "", 0
+
+
+def visual_distance(h1: str, h2: str) -> int:
+    """Hamming distance between two dHashes. 0 = identical."""
+    if not h1 or not h2:
+        return 999
+    try:
+        return bin(int(h1, 16) ^ int(h2, 16)).count("1")
+    except Exception:
+        return 999
+
+
+def mark_site_stale(site: str, reason: str) -> None:
+    """Flag sites/<domain>.json needs_relearn so the next run re-learns
+    just the broken steps instead of blind-clicking a changed layout."""
+    if not site:
+        return
+    try:
+        SITES_DIR.mkdir(parents=True, exist_ok=True)
+        fp = SITES_DIR / f"{site}.json"
+        prior = json.loads(fp.read_text()) if fp.exists() else {}
+        prior.update({"needs_relearn": True, "stale_reason": reason[:200],
+                      "stale_at": time.strftime("%Y-%m-%d %H:%M")})
+        fp.write_text(json.dumps(prior, indent=1))
+    except Exception:
+        pass
+
+
 def verify_effect(page, expect: dict, before_url: str) -> tuple[bool, str]:
     """Verify an action by its effect, never by looking. Returns (ok, detail)."""
     if not expect:
@@ -111,13 +169,28 @@ def snapshot_bytes(page) -> int:
 
 def run_blind(page, actions: list, baseline, store: ProfileStore | None = None,
               use_human_mouse: bool = False, max_strikes: int = 2,
-              gate_threshold: float = 0.95) -> dict:
-    """Execute actions blind. `baseline` is (hash, block-set) or a bare hash (exact mode).
+              gate_threshold: float = 0.95, visual_threshold: int = 12,
+              site: str | None = None) -> dict:
+    """Execute actions blind. `baseline` is (hash, block-set) or a bare hash (exact mode),
+    or a dict {blocks, visual} from hybrid_baseline() for the hybrid gate.
+
+    Hybrid drift check per action (cheap-first):
+      1. TEXT gate (Jaccard) — free, ignores ad-markup churn.
+      2. Pixel second opinion (dHash Hamming) — ONLY when TEXT trips.
+         Both fail = real layout drift: strike + mark_site_stale().
+         Either passes = noise, carry on.
     Returns a full event log + totals."""
     if isinstance(baseline, str):
         baseline_hash, baseline_blocks, exact_mode = baseline, frozenset(), True
+        baseline_visual = ""
+    elif isinstance(baseline, dict):
+        baseline_hash = baseline.get("hash", "")
+        baseline_blocks = baseline.get("blocks", frozenset())
+        baseline_visual = baseline.get("visual", "")
+        exact_mode = False
     else:
         baseline_hash, baseline_blocks = baseline
+        baseline_visual = ""
         exact_mode = False
     log: list[dict] = []
     strikes = 0
@@ -136,22 +209,40 @@ def run_blind(page, actions: list, baseline, store: ProfileStore | None = None,
             gate_ok = sim >= gate_threshold
             hb = len(live_blocks)
         if not gate_ok:
-            strikes += 1
-            ev = {"action": label, "gate": f"MISMATCH sim={sim:.3f}", "strikes": strikes,
-                  "gate_bytes": hb}
-            if strikes >= max_strikes:
-                full = snapshot_bytes(page)
+            # TEXT tripped — ask the pixel second opinion before crying drift.
+            drift, vdist = False, -1
+            if baseline_visual:
+                live_visual, _ = visual_hash(page)
+                vdist = visual_distance(live_visual, baseline_visual)
+                drift = vdist > visual_threshold
+            else:
+                drift = True  # no visual baseline — trust TEXT alone
+            if not drift:
+                ev = {"action": label,
+                      "gate": f"TEXT-TRIP sim={sim:.3f} but visual vdist={vdist} (noise)",
+                      "strikes": strikes, "gate_bytes": hb, "vdist": vdist,
+                      "outcome": "GATE-NOISE-PASS"}
+                log.append(ev)
+                # fall through to the action below
+            else:
+                strikes += 1
+                ev = {"action": label,
+                      "gate": f"DRIFT sim={sim:.3f} vdist={vdist}", "strikes": strikes,
+                      "gate_bytes": hb, "vdist": vdist}
+                mark_site_stale(site or "", f"{label}: sim={sim:.3f} vdist={vdist}")
+                if strikes >= max_strikes:
+                    full = snapshot_bytes(page)
+                    planner_bytes += full
+                    snapshots_used += 1
+                    ev.update({"outcome": "ABORT-REPROFILE", "planner_bytes": full})
+                    log.append(ev)
+                    break
+                full = snapshot_bytes(page)  # one look, then halt this action
                 planner_bytes += full
                 snapshots_used += 1
-                ev.update({"outcome": "ABORT-REPROFILE", "planner_bytes": full})
+                ev.update({"outcome": "HALT-SNAPSHOT", "planner_bytes": full})
                 log.append(ev)
-                break
-            full = snapshot_bytes(page)  # one look, then halt this action
-            planner_bytes += full
-            snapshots_used += 1
-            ev.update({"outcome": "HALT-SNAPSHOT", "planner_bytes": full})
-            log.append(ev)
-            continue
+                continue
         ev = {"action": label, "gate": f"pass sim={sim:.3f}", "strikes": strikes}
         # --- act ---
         before_url = page.url
@@ -230,11 +321,13 @@ def run_blind(page, actions: list, baseline, store: ProfileStore | None = None,
             ev["outcome"] = "RETRY-WITH-SNAPSHOT"
         else:
             ev["outcome"] = "OK-BLIND"
-        # Successful overlay disposal legitimately changes the page:
-        # refresh the gate baseline so we don't trip on our own success.
-        if ev.get("outcome") == "OK-BLIND" and ev.get("via") == "profile":
+        # Successful actions legitimately change the page: refresh BOTH
+        # baselines (TEXT + visual) so we don't trip on our own success.
+        if ev.get("outcome") == "OK-BLIND" and ev.get("via") in ("profile", "click"):
             try:
                 baseline_hash, baseline_blocks = main_region_blocks(page)
+                if baseline_visual:
+                    baseline_visual, _ = visual_hash(page)
                 ev["rebased"] = True
             except Exception:
                 pass
@@ -243,6 +336,13 @@ def run_blind(page, actions: list, baseline, store: ProfileStore | None = None,
     return {"log": log, "strikes": strikes, "planner_bytes": planner_bytes,
             "snapshots_used": snapshots_used,
             "blind_actions": sum(1 for e in log if e.get("outcome") == "OK-BLIND")}
+
+
+def hybrid_baseline(page) -> dict:
+    """Capture both gate signals at once: TEXT blocks + visual dHash."""
+    h, blocks = main_region_blocks(page)
+    vh, _ = visual_hash(page)
+    return {"hash": h, "blocks": blocks, "visual": vh}
 
 
 def launch_browser(pw, engine: str, headless: bool):

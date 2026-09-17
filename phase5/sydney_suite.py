@@ -33,8 +33,12 @@ import blind  # noqa: E402
 from blind import (  # noqa: E402
     fresh_page,
     gate_similarity,
+    hybrid_baseline,
     main_region_blocks,
+    mark_site_stale,
     snapshot_bytes,
+    visual_distance,
+    visual_hash,
     wait_past_challenge,
 )
 
@@ -116,8 +120,8 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         learned.append({"label": "search-url",
                         "url_template": SEARCH_URL,
                         "note": "file search via Special:Search profile=images"})
-        baseline = main_region_blocks(page)
-        sentinel_bytes += 512  # hash reads are cheap, accounted symbolically
+        baseline = hybrid_baseline(page)
+        sentinel_bytes += 512 + 272  # text hash + 17x16 dhash, both ~free
         step("search_load", t0, dom_bytes=dom_bytes,
              title=(page.title() or "")[:60],
              outcome="OK-FULL" if not blind_mode else "OK-BLIND")
@@ -154,16 +158,20 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         before_url = page.url
         if blind_mode:
             _, live = main_region_blocks(page)
-            sim = gate_similarity(live, baseline[1])
-            sentinel_bytes += 512
-            if sim < 0.95:
+            sim = gate_similarity(live, baseline["blocks"])
+            live_vh, _ = visual_hash(page)
+            vdist = visual_distance(live_vh, baseline.get("visual", ""))
+            sentinel_bytes += 512 + 272
+            if sim < 0.95 and vdist > 12:
                 strikes += 1
+                mark_site_stale("commons.wikimedia.org",
+                                f"gate_before_nav: sim={sim:.3f} vdist={vdist}")
                 full = snapshot_bytes(page)
                 planner_bytes += full
-                step("gate_before_nav", t0, sim=round(sim, 3),
+                step("gate_before_nav", t0, sim=round(sim, 3), vdist=vdist,
                      outcome="HALT-SNAPSHOT", planner_bytes=full)
             else:
-                step("gate_before_nav", t0, sim=round(sim, 3),
+                step("gate_before_nav", t0, sim=round(sim, 3), vdist=vdist,
                      outcome="GATE-PASS")
             t0 = now()
         page.goto("https://commons.wikimedia.org" + target,
@@ -176,7 +184,7 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         ok_nav = page.url != before_url and "/wiki/File:" in page.url
         if not ok_nav:
             strikes += 1
-        baseline = main_region_blocks(page)
+        baseline = hybrid_baseline(page)
         step("photo_load", t0, dom_bytes=dom2_bytes,
              title=(page.title() or "")[:60],
              outcome="OK-BLIND" if ok_nav else "FAIL-NAV")
