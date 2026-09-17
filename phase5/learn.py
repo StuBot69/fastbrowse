@@ -50,6 +50,8 @@ RECORDER_JS = """(() => {
     el.className.trim().split(/\s+/).filter(c => c && !HASHED_RE.test(c)).slice(0, 2) : []);
   const sel = (el) => {
     if (!el || el === document.body) return 'body';
+    // REC badge must stay identifiable so tapes can filter it out
+    if (el.id === '__fb_badge') return 'div#__fb_badge';
     // stable single-element anchors first (no brittle ancestor chain)
     if (el.id && !HASHED_RE.test(el.id)) return el.tagName.toLowerCase() + '#' + el.id;
     if (el.getAttribute) {
@@ -148,6 +150,8 @@ def learn_session(start_url: str, outdir: Path, profile_dir: Path,
     from camoufox.sync_api import Camoufox
     outdir.mkdir(parents=True, exist_ok=True)
     profile_dir.mkdir(parents=True, exist_ok=True)
+    dl_dir = outdir / "downloads"
+    dl_dir.mkdir(parents=True, exist_ok=True)
     summary: dict = {"start_url": start_url, "events": {}, "profiles": []}
     with Camoufox(headless=headless, persistent_context=True,
                   user_data_dir=str(profile_dir)) as browser:
@@ -156,6 +160,25 @@ def learn_session(start_url: str, outdir: Path, profile_dir: Path,
         except Exception:
             page = browser.new_context().new_page()
         page.add_init_script(RECORDER_JS)
+        # download plumbing: accept + record every download into outdir
+        downloads: list = []
+        try:
+            page.context._connection  # noqa: touch context early
+        except Exception:
+            pass
+        def _on_download(download):
+            try:
+                dest = dl_dir / (download.suggested_filename or "download.bin")
+                download.save_as(str(dest))
+                downloads.append({"file": str(dest), "url": download.url})
+                print(f"\nLEARN-DL: saved {dest.name} ({download.url[:80]})")
+            except Exception as e:
+                downloads.append({"error": str(e)[:120], "url": download.url})
+                print(f"\nLEARN-DL-ERR: {e}")
+        try:
+            page.on("download", _on_download)
+        except Exception:
+            pass
         page.goto(start_url, wait_until="domcontentloaded", timeout=45000)
         try:
             # fresh flow: drop any previous session's mirrored tape
@@ -253,6 +276,7 @@ def learn_session(start_url: str, outdir: Path, profile_dir: Path,
             "dom_bytes": len(dom.encode("utf-8")),
             "action_map": actions, "hover_anchors": anchors,
             "trail_head": tape.get("trail", [])[:5],
+            "downloads": downloads,
         })
         (outdir / "profile.json").write_text(json.dumps(summary, indent=1)[:500_000], encoding="utf-8")
     return summary
