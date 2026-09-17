@@ -1,0 +1,86 @@
+{
+ "start_url": "https://pixabay.com/images/search/hot%20cyborg%20girls/",
+ "events": {},
+ "profiles": [],
+ "clicks": 4,
+ "trail_points": 2000,
+ "navs": [
+  {
+   "from": "https://pixabay.com/images/search/hot%20cyborg%20girls/",
+   "to": "https://pixabay.com/illustrations/game-character-hot-face-woman-8322791/"
+  }
+ ],
+ "final_url": "https://pixabay.com/illustrations/game-character-hot-face-woman-8322791/",
+ "dom_bytes": 513181,
+ "action_map": [
+  {
+   "label": "Free download",
+   "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div > button.mainButton--_3TDY:nth-of-type(1)",
+   "at": [
+    1176,
+    178
+   ]
+  },
+  {
+   "label": "div:nth-of-type(2) > div > div:nth-of-type(1) > div > button",
+   "selector": "div:nth-of-type(2) > div > div:nth-of-type(1) > div > button",
+   "at": [
+    987,
+    105
+   ]
+  },
+  {
+   "label": "Reject All",
+   "selector": "button#onetrust-reject-all-handler",
+   "at": [
+    1060,
+    673
+   ]
+  },
+  {
+   "label": "div > div > a > div.image--V1_OV > img",
+   "selector": "div > div > a > div.image--V1_OV > img",
+   "at": [
+    769,
+    465
+   ]
+  }
+ ],
+ "hover_anchors": [
+  {
+   "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div > div",
+   "dwell_ms": 2049
+  },
+  {
+   "selector": "div > div > div.gap_16--_Y_PU > div:nth-of-type(1) > div:nth-of-type(2)",
+   "dwell_ms": 994
+  }
+ ],
+ "trail_head": [
+  [
+   816,
+   643,
+   1789648803785
+  ],
+  [
+   814,
+   640,
+   1789648804041
+  ],
+  [
+   814,
+   604,
+   1789648806092
+  ],
+  [
+   814,
+   595,
+   1789648806288
+  ],
+  [
+   813,
+   589,
+   1789648807182
+  ]
+ ]
+}

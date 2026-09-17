@@ -1,0 +1,26 @@
+{
+ "profiles": [
+  {
+   "site": "",
+   "overlay_signature": "hover:div#m1->div#m1",
+   "overlay_kind": "hover",
+   "selector": "div#m1",
+   "action": "hover-hold",
+   "first_seen": "2026-09-17T02:55:27+0100",
+   "last_seen": "2026-09-17T03:14:06+0100",
+   "hits": 6,
+   "overlay_bytes": 0,
+   "frame_url_pattern": "",
+   "frame_inner_selector": "",
+   "anchor_point": [
+    91.70832824707031,
+    118.24166488647461
+   ],
+   "reveals_selector": "#m1-menu",
+   "target_selector": "div#m1",
+   "pre_hover": "",
+   "dwell_ms": 864,
+   "path_kind": "direct"
+  }
+ ]
+}

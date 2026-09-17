@@ -1,0 +1,111 @@
+{
+ "start_url": "https://stock.adobe.com/search?k=female+cyborg",
+ "events": {},
+ "profiles": [],
+ "clicks": 5,
+ "trail_points": 2000,
+ "navs": [
+  {
+   "from": "https://stock.adobe.com/search?k=female+cyborg",
+   "to": "https://stock.adobe.com/uk/search?k=female+cyborg"
+  },
+  {
+   "from": "https://stock.adobe.com/uk/search?k=female+cyborg",
+   "to": "https://stock.adobe.com/uk/search?k=female+cyborg&asset_id=1094384340"
+  },
+  {
+   "from": "https://stock.adobe.com/uk/search?k=female+cyborg&asset_id=1094384340",
+   "to": "https://auth.services.adobe.com/en_US/deeplink.html?deeplink=ssofirst&callback=https%3A%2F%2Fims-na1.adobelogin.com%2Fims%2Fadobeid%2Funified_checkout_client_v3%2FAdobeID%2Fcode%3Fredirect_uri%3Dhttps%253A%252F%252Fcommerce.adobe.com%252Fstore%252Fpost-ims-workflow%253FrUrl%253Dhttps%25253A%25252F%25252Fstock.adobe.com%25252Fuk%25252Fsearch%25253Fk%25253Dfemale%25252Bcyborg%252526asset_id%25253D1094384340%252526continue-checkout%25253D1%26state%3D%257B%2522ac%2522%253A%2522commerce.adobe.com%2522%257D%26code_challenge_method%3Dplain%26use_ms_for_expiry%3Dtrue&client_id=unified_checkout_client_v3&scope=AdobeID%2Cab.manage%2Caccount_cluster.read%2Cadditional_info.authenticatingAccount%2Cadditional_info.roles%2Cadditional_info.vat_id%2Cbis.read.pan%2Cbis.read.pi%2Cemail_verification.w%2Copenid%2Cupdate_profile.countryCode%2Cupdate_profile.optionalAgreements&state=%7B%22ac%22%3A%22commerce.adobe.com%22%7D&relay=adda9d0c-f440-4ac9-92ed-f29bea7f6590&locale=en_US&flow_type=code&dc=true&puser=stuatpatterson%40gmail.com&pcountry=GB&eu=true&dctx_id=v%3A2%2Ch%2Cdcp-r%2C05ba8c30-b29c-11f1-b589-d197d5872c58&idp_flow_type=login&s_p=google%2Cmicrosoft%2Capple%2Cfacebook%2Cline%2Ckakao&response_type=code&code_challenge_method=plain&redirect_uri=https%3A%2F%2Fcommerce.adobe.com%2Fstore%2Fpost-ims-workflow%3FrUrl%3Dhttps%253A%252F%252Fstock.adobe.com%252Fuk%252Fsearch%253Fk%253Dfemale%252Bcyborg%2526asset_id%253D1094384340%2526continue-checkout%253D1&use_ms_for_expiry=true"
+  },
+  {
+   "from": "https://auth.services.adobe.com/en_US/deeplink.html?deeplink=ssofirst&callback=https%3A%2F%2Fims-na1.adobelogin.com%2Fims%2Fadobeid%2Funified_checkout_client_v3%2FAdobeID%2Fcode%3Fredirect_uri%3Dhttps%253A%252F%252Fcommerce.adobe.com%252Fstore%252Fpost-ims-workflow%253FrUrl%253Dhttps%25253A%25252F%25252Fstock.adobe.com%25252Fuk%25252Fsearch%25253Fk%25253Dfemale%25252Bcyborg%252526asset_id%25253D1094384340%252526continue-checkout%25253D1%26state%3D%257B%2522ac%2522%253A%2522commerce.adobe.com%2522%257D%26code_challenge_method%3Dplain%26use_ms_for_expiry%3Dtrue&client_id=unified_checkout_client_v3&scope=AdobeID%2Cab.manage%2Caccount_cluster.read%2Cadditional_info.authenticatingAccount%2Cadditional_info.roles%2Cadditional_info.vat_id%2Cbis.read.pan%2Cbis.read.pi%2Cemail_verification.w%2Copenid%2Cupdate_profile.countryCode%2Cupdate_profile.optionalAgreements&state=%7B%22ac%22%3A%22commerce.adobe.com%22%7D&relay=adda9d0c-f440-4ac9-92ed-f29bea7f6590&locale=en_US&flow_type=code&dc=true&puser=stuatpatterson%40gmail.com&pcountry=GB&eu=true&dctx_id=v%3A2%2Ch%2Cdcp-r%2C05ba8c30-b29c-11f1-b589-d197d5872c58&idp_flow_type=login&s_p=google%2Cmicrosoft%2Capple%2Cfacebook%2Cline%2Ckakao&response_type=code&code_challenge_method=plain&redirect_uri=https%3A%2F%2Fcommerce.adobe.com%2Fstore%2Fpost-ims-workflow%3FrUrl%3Dhttps%253A%252F%252Fstock.adobe.com%252Fuk%252Fsearch%253Fk%253Dfemale%252Bcyborg%2526asset_id%253D1094384340%2526continue-checkout%253D1&use_ms_for_expiry=true",
+   "to": "https://auth.services.adobe.com/en_US/deeplink.html?deeplink=ssofirst&callback=https%3A%2F%2Fims-na1.adobelogin.com%2Fims%2Fadobeid%2Funified_checkout_client_v3%2FAdobeID%2Fcode%3Fredirect_uri%3Dhttps%253A%252F%252Fcommerce.adobe.com%252Fstore%252Fpost-ims-workflow%253FrUrl%253Dhttps%25253A%25252F%25252Fstock.adobe.com%25252Fuk%25252Fsearch%25253Fk%25253Dfemale%25252Bcyborg%252526asset_id%25253D1094384340%252526continue-checkout%25253D1%26state%3D%257B%2522ac%2522%253A%2522commerce.adobe.com%2522%257D%26code_challenge_method%3Dplain%26use_ms_for_expiry%3Dtrue&client_id=unified_checkout_client_v3&scope=AdobeID%2Cab.manage%2Caccount_cluster.read%2Cadditional_info.authenticatingAccount%2Cadditional_info.roles%2Cadditional_info.vat_id%2Cbis.read.pan%2Cbis.read.pi%2Cemail_verification.w%2Copenid%2Cupdate_profile.countryCode%2Cupdate_profile.optionalAgreements&state=%7B%22ac%22%3A%22commerce.adobe.com%22%7D&relay=adda9d0c-f440-4ac9-92ed-f29bea7f6590&locale=en_US&flow_type=code&dc=true&puser=stuatpatterson%40gmail.com&pcountry=GB&eu=true&dctx_id=v%3A2%2Ch%2Cdcp-r%2C05ba8c30-b29c-11f1-b589-d197d5872c58&idp_flow_type=login&s_p=google%2Cmicrosoft%2Capple%2Cfacebook%2Cline%2Ckakao&response_type=code&code_challenge_method=plain&redirect_uri=https%3A%2F%2Fcommerce.adobe.com%2Fstore%2Fpost-ims-workflow%3FrUrl%3Dhttps%253A%252F%252Fstock.adobe.com%252Fuk%252Fsearch%253Fk%253Dfemale%252Bcyborg%2526asset_id%253D1094384340%2526continue-checkout%253D1&use_ms_for_expiry=true#/social-only"
+  },
+  {
+   "from": "https://auth.services.adobe.com/en_US/deeplink.html?deeplink=ssofirst&callback=https%3A%2F%2Fims-na1.adobelogin.com%2Fims%2Fadobeid%2Funified_checkout_client_v3%2FAdobeID%2Fcode%3Fredirect_uri%3Dhttps%253A%252F%252Fcommerce.adobe.com%252Fstore%252Fpost-ims-workflow%253FrUrl%253Dhttps%25253A%25252F%25252Fstock.adobe.com%25252Fuk%25252Fsearch%25253Fk%25253Dfemale%25252Bcyborg%252526asset_id%25253D1094384340%252526continue-checkout%25253D1%26state%3D%257B%2522ac%2522%253A%2522commerce.adobe.com%2522%257D%26code_challenge_method%3Dplain%26use_ms_for_expiry%3Dtrue&client_id=unified_checkout_client_v3&scope=AdobeID%2Cab.manage%2Caccount_cluster.read%2Cadditional_info.authenticatingAccount%2Cadditional_info.roles%2Cadditional_info.vat_id%2Cbis.read.pan%2Cbis.read.pi%2Cemail_verification.w%2Copenid%2Cupdate_profile.countryCode%2Cupdate_profile.optionalAgreements&state=%7B%22ac%22%3A%22commerce.adobe.com%22%7D&relay=adda9d0c-f440-4ac9-92ed-f29bea7f6590&locale=en_US&flow_type=code&dc=true&puser=stuatpatterson%40gmail.com&pcountry=GB&eu=true&dctx_id=v%3A2%2Ch%2Cdcp-r%2C05ba8c30-b29c-11f1-b589-d197d5872c58&idp_flow_type=login&s_p=google%2Cmicrosoft%2Capple%2Cfacebook%2Cline%2Ckakao&response_type=code&code_challenge_method=plain&redirect_uri=https%3A%2F%2Fcommerce.adobe.com%2Fstore%2Fpost-ims-workflow%3FrUrl%3Dhttps%253A%252F%252Fstock.adobe.com%252Fuk%252Fsearch%253Fk%253Dfemale%252Bcyborg%2526asset_id%253D1094384340%2526continue-checkout%253D1&use_ms_for_expiry=true#/social-only",
+   "to": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S-1053849789%3A1789651878889368&client_id=1014431251553-kq98rctnjtv76ag4ulrfkem43b74poni.apps.googleusercontent.com&o2v=2&redirect_uri=https%3A%2F%2Ffederatedid-na1.services.adobe.com%2Ffederated%2FfromOIDC&response_type=code&scope=email+openid+profile&service=lso&state=AWuViGOkNYo-pfEsIdlb3dPGBX5abeFDDdThE5hZEmYLf4YlD_1g4PJw13ft36nHoc4d9_ij4iG1&flowName=GeneralOAuthFlow&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAOn0j_5b5RTNfEJbF8g35RCpsj9A42RG_dsYUklGFwM0d-aWyrly8KklglCP1__i6qhxW5bx6ENUvqxizHKi5HAxf-hnzuEa3mXLrfkIQaGkiSDnjcijMU6UVRS9lyqk8ZXMurE0Rk923cXec317zjuyDFhO60BPCFQ-i06EIOXY-OP9NO1T1mZICnqyLvQnWLyqY3nopHwd4XaL0BLSStoyu7_8EKqoHNGgiOQ4POzQrtlsXXDnqSn2PV2TNQ3xjEM7NRkZQWbeBHeFBNdT2z3SO_mvdU5tGVOZQa2XRSoTMWkM-iv4-1nrXzW7v565PgUxVch2NTGewX0AjISh4ZREa2c_98oL56s1kZSjkLnv-bo31ZqmuXMoR-nFCtVg0sIsheZFJ-z7KzpCR-aDjALGcXgqErADooiz2lIXj50yu0fV8Up7klQ4WaSNhn56lS1SNqdZHf-JS7FADavPnJitWmtT3gLiotM2bhkKHUq-L4PEk_fkBPfz5a-gFEvyLocf4l3%26flowName%3DGeneralOAuthFlow%26as%3DS-1053849789%253A1789651878889368%26client_id%3D1014431251553-kq98rctnjtv76ag4ulrfkem43b74poni.apps.googleusercontent.com%26requestPath%3D%252Fsignin%252Foauth%252Fconsent%23&app_domain=https%3A%2F%2Ffederatedid-na1.services.adobe.com&rart=ANgoxcfoZP5EjE6F7JgDac9CUFX1GC4lzkXiXxYXTl0Z6Q1NNQBuzEN17HFMoroXrU7CUlLii62mbsmD1-zI0IOZAnTtpQw9HmtwpN-NR8pf_HnyM-K7Hg4"
+  }
+ ],
+ "final_url": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S-1053849789%3A1789651878889368&client_id=1014431251553-kq98rctnjtv76ag4ulrfkem43b74poni.apps.googleusercontent.com&o2v=2&redirect_uri=https%3A%2F%2Ffederatedid-na1.services.adobe.com%2Ffederated%2FfromOIDC&response_type=code&scope=email+openid+profile&service=lso&state=AWuViGOkNYo-pfEsIdlb3dPGBX5abeFDDdThE5hZEmYLf4YlD_1g4PJw13ft36nHoc4d9_ij4iG1&flowName=GeneralOAuthFlow&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAOn0j_5b5RTNfEJbF8g35RCpsj9A42RG_dsYUklGFwM0d-aWyrly8KklglCP1__i6qhxW5bx6ENUvqxizHKi5HAxf-hnzuEa3mXLrfkIQaGkiSDnjcijMU6UVRS9lyqk8ZXMurE0Rk923cXec317zjuyDFhO60BPCFQ-i06EIOXY-OP9NO1T1mZICnqyLvQnWLyqY3nopHwd4XaL0BLSStoyu7_8EKqoHNGgiOQ4POzQrtlsXXDnqSn2PV2TNQ3xjEM7NRkZQWbeBHeFBNdT2z3SO_mvdU5tGVOZQa2XRSoTMWkM-iv4-1nrXzW7v565PgUxVch2NTGewX0AjISh4ZREa2c_98oL56s1kZSjkLnv-bo31ZqmuXMoR-nFCtVg0sIsheZFJ-z7KzpCR-aDjALGcXgqErADooiz2lIXj50yu0fV8Up7klQ4WaSNhn56lS1SNqdZHf-JS7FADavPnJitWmtT3gLiotM2bhkKHUq-L4PEk_fkBPfz5a-gFEvyLocf4l3%26flowName%3DGeneralOAuthFlow%26as%3DS-1053849789%253A1789651878889368%26client_id%3D1014431251553-kq98rctnjtv76ag4ulrfkem43b74poni.apps.googleusercontent.com%26requestPath%3D%252Fsignin%252Foauth%252Fconsent%23&app_domain=https%3A%2F%2Ffederatedid-na1.services.adobe.com&rart=ANgoxcfoZP5EjE6F7JgDac9CUFX1GC4lzkXiXxYXTl0Z6Q1NNQBuzEN17HFMoroXrU7CUlLii62mbsmD1-zI0IOZAnTtpQw9HmtwpN-NR8pf_HnyM-K7Hg4",
+ "dom_bytes": 1282679,
+ "action_map": [
+  {
+   "label": "div#search-results > div.search-result-cell.small-bottom-spa",
+   "selector": "div#search-results > div.search-result-cell.small-bottom-spacing:nth-of-type(19) > div.thumb-frame:nth-of-type(1) > a.js-search-result-thumbnail.non-js-link > img.js-img-protect.container-absolute",
+   "at": [
+    1650,
+    482
+   ]
+  },
+  {
+   "label": "Enable all",
+   "selector": "button#onetrust-accept-btn-handler",
+   "at": [
+    1595,
+    880
+   ]
+  },
+  {
+   "label": "Download with free trial",
+   "selector": "div.container-block.padding-top-medium:nth-of-type(6) > div.detail-button-container:nth-of-type(1) > div.detail-button-group:nth-of-type(1) > button.button.js-buy-license-analytics > span",
+   "at": [
+    1392,
+    610
+   ]
+  },
+  {
+   "label": "Start free trial",
+   "selector": "div.ShoNy > div.gelFxW:nth-of-type(6) > div.iGBsvW > div.fzFyIy > span",
+   "at": [
+    1103,
+    641
+   ]
+  },
+  {
+   "label": "Adobe Stock - 10 assets a month + AI Studio\nWe've found your",
+   "selector": "section.Canvas-Background > div.Canvas-Layout.Canvas-Layout--with-footer > div.Canvas-Grid.px-200 > div.Canvas-Item.Canvas-Context > div.Context-Container",
+   "at": [
+    1229,
+    130
+   ]
+  }
+ ],
+ "hover_anchors": [
+  {
+   "selector": "div.X9monf:nth-of-type(2) > div.S7xv8.LZgQXe:nth-of-type(1)",
+   "dwell_ms": 2524
+  },
+  {
+   "selector": "div.X9monf:nth-of-type(2) > div.S7xv8.LZgQXe:nth-of-type(1) > div.TcuCfd.NQ5OL:nth-of-type(1)",
+   "dwell_ms": 733
+  }
+ ],
+ "trail_head": [
+  [
+   1037,
+   518,
+   1789651796085
+  ],
+  [
+   1181,
+   466,
+   1789651796185
+  ],
+  [
+   1383,
+   382,
+   1789651796344
+  ],
+  [
+   1445,
+   323,
+   1789651796451
+  ],
+  [
+   1514,
+   268,
+   1789651796552
+  ]
+ ],
+ "downloads": []
+}

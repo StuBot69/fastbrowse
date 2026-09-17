@@ -1,0 +1,111 @@
+{
+ "start_url": "https://stock.adobe.com/search?k=female+cyborg",
+ "events": {},
+ "profiles": [],
+ "clicks": 3,
+ "trail_points": 1917,
+ "navs": [
+  {
+   "from": "https://stock.adobe.com/uk/search?k=female+cyborg",
+   "to": "https://stock.adobe.com/uk/search/ai-studio"
+  }
+ ],
+ "final_url": "https://stock.adobe.com/uk/search/ai-studio",
+ "dom_bytes": 369270,
+ "action_map": [
+  {
+   "label": "Free trial",
+   "selector": "button#react-aria1476477358-:r61:",
+   "at": [
+    1420,
+    326
+   ]
+  },
+  {
+   "label": "Start free trial",
+   "selector": "div.hudFDs:nth-of-type(1) > div.ShoNy > div.gelFxW:nth-of-type(6) > div.iGBsvW > div.fzFyIy",
+   "at": [
+    987,
+    647
+   ]
+  },
+  {
+   "label": "div#search-results > div.search-result-cell.small-bottom-spa",
+   "selector": "div#search-results > div.search-result-cell.small-bottom-spacing:nth-of-type(19) > div.thumb-frame:nth-of-type(1) > a.js-search-result-thumbnail.non-js-link > img.js-img-protect.container-absolute",
+   "at": [
+    342,
+    230
+   ]
+  }
+ ],
+ "hover_anchors": [
+  {
+   "selector": "div.gEWOVC > div.motmot > div.mti-modal.modal--with-header > div.gaFGxi > iframe.iDfyGx",
+   "dwell_ms": 9387
+  },
+  {
+   "selector": "button#react-aria1476477358-:r61:",
+   "dwell_ms": 5291
+  },
+  {
+   "selector": "div.motmot:nth-of-type(1) > div.react-spectrum-provider.spectrum > div.gEWOVC > div.motmot > div.mti-modal.modal--with-header",
+   "dwell_ms": 4260
+  },
+  {
+   "selector": "div#app > div.react-spectrum-provider.spectrum > div.XjpDJq_spectrum.oAOseG_spectrum > main > div.fBgRda:nth-of-type(3)",
+   "dwell_ms": 3314
+  },
+  {
+   "selector": "div.kYQJoC:nth-of-type(2) > div.hLQkea:nth-of-type(2) > div.pakpI:nth-of-type(2) > div.ShoNy > div.bgPcTp:nth-of-type(2)",
+   "dwell_ms": 2496
+  },
+  {
+   "selector": "div.cIuUkB:nth-of-type(1) > div.eubwhU > div > div.ifJjyP.draggable > img.eyVqUU",
+   "dwell_ms": 2175
+  },
+  {
+   "selector": "div.khUIdg:nth-of-type(1) > div > div.hBTcai:nth-of-type(2) > div.hOvTbw:nth-of-type(2) > div.hWaNpu",
+   "dwell_ms": 1333
+  },
+  {
+   "selector": "div.gEWOVC > div.motmot > div.mti-modal.modal--with-header > div.gaFGxi > div.medium-heavy-metal-overlay.container-absolute:nth-of-type(2)",
+   "dwell_ms": 1193
+  },
+  {
+   "selector": "div#__fb_badge",
+   "dwell_ms": 1151
+  },
+  {
+   "selector": "div.hBTcai:nth-of-type(2) > div.hOvTbw:nth-of-type(2) > div.hWaNpu > div.vi3c6W_flex > div:nth-of-type(1)",
+   "dwell_ms": 1065
+  }
+ ],
+ "trail_head": [
+  [
+   994,
+   579,
+   1789652018959
+  ],
+  [
+   1106,
+   282,
+   1789652019201
+  ],
+  [
+   1060,
+   207,
+   1789652020890
+  ],
+  [
+   1006,
+   250,
+   1789652021021
+  ],
+  [
+   905,
+   328,
+   1789652021122
+  ]
+ ],
+ "downloads": []
+}

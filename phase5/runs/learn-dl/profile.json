@@ -1,0 +1,103 @@
+{
+ "start_url": "https://pixabay.com/illustrations/girl-woman-cyborg-future-8762801/",
+ "events": {},
+ "profiles": [],
+ "clicks": 5,
+ "trail_points": 1100,
+ "navs": [],
+ "final_url": "https://pixabay.com/illustrations/girl-woman-cyborg-future-8762801/",
+ "dom_bytes": 397352,
+ "action_map": [
+  {
+   "label": "Free download",
+   "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div > button:nth-of-type(1)",
+   "at": [
+    1111,
+    183
+   ]
+  },
+  {
+   "label": "\u25cf REC \u2014 click to Finish & Save",
+   "selector": "html > div",
+   "at": [
+    1233,
+    31
+   ]
+  },
+  {
+   "label": "Free download",
+   "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div > button:nth-of-type(1)",
+   "at": [
+    1386,
+    182
+   ]
+  },
+  {
+   "label": "div:nth-of-type(2) > div > div:nth-of-type(1) > div > button",
+   "selector": "div:nth-of-type(2) > div > div:nth-of-type(1) > div > button",
+   "at": [
+    1146,
+    163
+   ]
+  },
+  {
+   "label": "\u25cf REC \u2014 click to Finish & Save",
+   "selector": "html > div",
+   "at": [
+    1510,
+    23
+   ]
+  }
+ ],
+ "hover_anchors": [
+  {
+   "selector": "div:nth-of-type(2) > div > div > div > img",
+   "dwell_ms": 2351
+  },
+  {
+   "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div > div",
+   "dwell_ms": 1965
+  },
+  {
+   "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div > button:nth-of-type(1)",
+   "dwell_ms": 1733
+  },
+  {
+   "selector": "div > header > div > div:nth-of-type(3) > button",
+   "dwell_ms": 501
+  }
+ ],
+ "trail_head": [
+  [
+   834,
+   231,
+   1789649192410
+  ],
+  [
+   828,
+   231,
+   1789649192510
+  ],
+  [
+   823,
+   234,
+   1789649192676
+  ],
+  [
+   820,
+   234,
+   1789649192977
+  ],
+  [
+   808,
+   241,
+   1789649193079
+  ]
+ ],
+ "downloads": [
+  {
+   "file": "runs-learn-dl/downloads/aiartista-girl-8762801.jpg",
+   "url": "https://pixabay.com/get/g10fd8569b81b6ce107b2a79142809810874a6f33a71cd7bcd58ecec078d0f424b6d007912a08781e367b2bcac2d7330b29999187aca3c99ba73614687afc8c377b40936beba0ff213c61f8ee67400820.jpg?attachment="
+  }
+ ]
+}

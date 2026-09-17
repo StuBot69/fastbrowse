@@ -22,6 +22,9 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+RUNS_DIR = HERE / "runs"  # all run artifacts live here, not flat in phase5/
+PICS_DIR = Path.home() / "Downloads" / "pictures"  # default sink for downloads
+SITES_DIR = HERE / "sites"  # learned site knowledge: <site>.json (selectors, rules)
 sys.path.insert(0, str(HERE.parent / "phase4"))
 sys.path.insert(0, str(HERE.parent / "phase3"))
 sys.path.insert(0, str(HERE.parent))
@@ -270,6 +273,28 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
     }
     (outdir / "run-report.json").write_text(json.dumps(report, indent=1))
     (outdir / "action_map.json").write_text(json.dumps(learned, indent=1))
+    # default sink: copy final downloads to ~/Downloads/pictures/
+    try:
+        PICS_DIR.mkdir(parents=True, exist_ok=True)
+        import shutil
+        for d in downloads:
+            if d.get("file") and not d.get("error"):
+                shutil.copy2(dl_dir / d["file"], PICS_DIR / d["file"])
+        report["pics_sink"] = str(PICS_DIR)
+    except Exception as e:
+        report["pics_sink_error"] = str(e)[:120]
+    # persist learned site knowledge for drift detection (rule: selectors +
+    # dom fingerprints per URL; replay warns when they stop matching)
+    try:
+        SITES_DIR.mkdir(parents=True, exist_ok=True)
+        site_file = SITES_DIR / "commons.wikimedia.org.json"
+        prior = json.loads(site_file.read_text()) if site_file.exists() else {}
+        prior.update({"selectors": learned,
+                      "last_verified": time.strftime("%Y-%m-%d"),
+                      "schema_version": 1})
+        site_file.write_text(json.dumps(prior, indent=1))
+    except Exception as e:
+        report["site_save_error"] = str(e)[:120]
     return report
 
 
@@ -283,14 +308,14 @@ def main() -> None:
     args = ap.parse_args()
 
     if args.run == "1":
-        out = Path(args.out or "runs-sydney-commons-1")
+        out = Path(args.out or str(RUNS_DIR / "sydney-commons-1"))
         rep = run_flow(RUN1_QUERY, out,
                        Path(args.profile_dir or str(out / "profile")))
     else:
         if not args.tape:
-            raise SystemExit("--run 2 needs --tape runs-sydney-commons-1")
+            raise SystemExit("--run 2 needs --tape runs/runs-sydney-commons-1")
         tape = json.loads((Path(args.tape) / "action_map.json").read_text())
-        out = Path(args.out or "runs-sydney-commons-2")
+        out = Path(args.out or str(RUNS_DIR / "sydney-commons-2"))
         rep = run_flow(RUN2_QUERY, out,
                        Path(args.profile_dir or str(out / "profile")),
                        blind_mode=True, tape=tape, expect_slug=RUN2_SLUG)

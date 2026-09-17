@@ -1,0 +1,53 @@
+{
+ "start_url": "https://stock.adobe.com/search?k=female+cyborg",
+ "events": {},
+ "profiles": [],
+ "clicks": 0,
+ "trail_points": 1051,
+ "navs": [],
+ "final_url": "https://stock.adobe.com/search?k=female+cyborg",
+ "dom_bytes": 899938,
+ "action_map": [],
+ "hover_anchors": [
+  {
+   "selector": "div#credential_picker_container > iframe.L5Fo6c-PQbLGe",
+   "dwell_ms": 5617
+  },
+  {
+   "selector": "a#pricing-btn",
+   "dwell_ms": 833
+  },
+  {
+   "selector": "div#__fb_badge",
+   "dwell_ms": 540
+  }
+ ],
+ "trail_head": [
+  [
+   994,
+   579,
+   1789652018959
+  ],
+  [
+   1106,
+   282,
+   1789652019201
+  ],
+  [
+   994,
+   579,
+   1789652018959
+  ],
+  [
+   1106,
+   282,
+   1789652019201
+  ],
+  [
+   994,
+   579,
+   1789652018959
+  ]
+ ],
+ "downloads": []
+}

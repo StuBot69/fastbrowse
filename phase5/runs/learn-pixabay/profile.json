@@ -1,0 +1,90 @@
+{
+ "start_url": "https://pixabay.com",
+ "events": {},
+ "profiles": [],
+ "clicks": 2,
+ "trail_points": 1255,
+ "navs": [
+  {
+   "from": "https://pixabay.com/",
+   "to": "https://pixabay.com/images/search/sexy%20cyborg%20girls/"
+  },
+  {
+   "from": "https://pixabay.com/images/search/sexy%20cyborg%20girls/",
+   "to": "https://pixabay.com/"
+  }
+ ],
+ "final_url": "https://pixabay.com/",
+ "dom_bytes": 438727,
+ "action_map": [
+  {
+   "label": "div.filters--Nlo3g:nth-of-type(2) > div.container--EkuNg:nth",
+   "selector": "div.filters--Nlo3g:nth-of-type(2) > div.container--EkuNg:nth-of-type(2) > form.searchForm--PcoRt.large--fq9eb > div.inputWrapper--Tl2Rj:nth-of-type(1) > input",
+   "at": [
+    673,
+    334
+   ]
+  },
+  {
+   "label": "Adult Content\nSafeSearch",
+   "selector": "div.column--umQ7h:nth-of-type(1) > div.cell--uzyOP:nth-of-type(2) > div.contentContainer--bU97W > div.container--mVjnq > div.nsfwPlaceholder--tfRox:nth-of-type(1)",
+   "at": [
+    289,
+    619
+   ]
+  }
+ ],
+ "hover_anchors": [
+  {
+   "selector": "div.contentContainer--bU97W > div.container--mVjnq > a.link--LGc0H > div.overlayContainer--mRC66.image--V1_OV > img",
+   "dwell_ms": 3917
+  },
+  {
+   "selector": "div:nth-of-type(1) > div.container--iurE5:nth-of-type(2) > div.mediaIndexSection--Ou2Oh:nth-of-type(3) > div.layout--JZpqG.column--FuwM5:nth-of-type(2) > div.scrollingGrid--Vu4f1:nth-of-type(2)",
+   "dwell_ms": 2399
+  },
+  {
+   "selector": "div.container--iurE5:nth-of-type(2) > div.editorsChoiceSection--inFVO:nth-of-type(2) > div.container--IaI2v > div.verticalMasonry--rAjev.multiColumn--aHlce:nth-of-type(1) > div.column--umQ7h:nth-of-type(2)",
+   "dwell_ms": 2265
+  },
+  {
+   "selector": "div#app > div:nth-of-type(1)",
+   "dwell_ms": 634
+  },
+  {
+   "selector": "div#__fb_badge",
+   "dwell_ms": 612
+  },
+  {
+   "selector": "div#app > div:nth-of-type(1) > div.container--CoJQn.withCarousel--cLfnv:nth-of-type(1) > div.wrapper--SH4Ax:nth-of-type(2) > div.filters--Nlo3g:nth-of-type(2)",
+   "dwell_ms": 600
+  }
+ ],
+ "trail_head": [
+  [
+   1395,
+   756,
+   1789648227087
+  ],
+  [
+   1357,
+   745,
+   1789648227539
+  ],
+  [
+   1395,
+   756,
+   1789648227087
+  ],
+  [
+   1357,
+   745,
+   1789648227539
+  ],
+  [
+   1276,
+   691,
+   1789648229153
+  ]
+ ]
+}

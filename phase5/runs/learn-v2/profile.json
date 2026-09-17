@@ -1,0 +1,102 @@
+{
+ "start_url": "https://pixabay.com/images/search/hot%20cyborg%20girls/",
+ "events": {},
+ "profiles": [],
+ "clicks": 4,
+ "trail_points": 1557,
+ "navs": [
+  {
+   "from": "https://pixabay.com/images/search/hot%20cyborg%20girls/",
+   "to": "https://pixabay.com/illustrations/girl-woman-cyborg-future-8762801/"
+  }
+ ],
+ "final_url": "https://pixabay.com/illustrations/girl-woman-cyborg-future-8762801/",
+ "dom_bytes": 403462,
+ "action_map": [
+  {
+   "label": "Free download",
+   "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div > button:nth-of-type(1)",
+   "at": [
+    1111,
+    183
+   ]
+  },
+  {
+   "label": "\u25cf REC \u2014 click to Finish & Save",
+   "selector": "html > div",
+   "at": [
+    1233,
+    31
+   ]
+  },
+  {
+   "label": "Free download",
+   "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div > button.mainButton--_3TDY:nth-of-type(1)",
+   "at": [
+    1176,
+    178
+   ]
+  },
+  {
+   "label": "div:nth-of-type(2) > div > div:nth-of-type(1) > div > button",
+   "selector": "div:nth-of-type(2) > div > div:nth-of-type(1) > div > button",
+   "at": [
+    987,
+    105
+   ]
+  }
+ ],
+ "hover_anchors": [
+  {
+   "selector": "div:nth-of-type(2) > div > div:nth-of-type(2) > div > div:nth-of-type(2)",
+   "dwell_ms": 3304
+  },
+  {
+   "selector": "div > div:nth-of-type(2) > div > div:nth-of-type(2) > button",
+   "dwell_ms": 1834
+  },
+  {
+   "selector": "div:nth-of-type(2) > div > div > div > img",
+   "dwell_ms": 1697
+  },
+  {
+   "selector": "div > div:nth-of-type(2) > div > div:nth-of-type(1) > div",
+   "dwell_ms": 1669
+  },
+  {
+   "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div > div",
+   "dwell_ms": 1129
+  },
+  {
+   "selector": "div > div:nth-of-type(2) > div > div:nth-of-type(3) > div:nth-of-type(2)",
+   "dwell_ms": 594
+  }
+ ],
+ "trail_head": [
+  [
+   789,
+   451,
+   1789648846880
+  ],
+  [
+   829,
+   396,
+   1789648847017
+  ],
+  [
+   853,
+   358,
+   1789648847127
+  ],
+  [
+   858,
+   337,
+   1789648847329
+  ],
+  [
+   856,
+   337,
+   1789648847911
+  ]
+ ]
+}

@@ -5,4 +5,7 @@ phase1/*.ax.json
 phase1/*.dom.html
 .DS_Store
 phase5/learn-profile/
+phase5/runs/*/profile/
+phase5/runs/*/downloads/
+phase5/runs/*/events.json
 .serena/

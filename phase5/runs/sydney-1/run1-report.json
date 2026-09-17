@@ -1,0 +1,50 @@
+{
+ "steps": [
+  {
+   "name": "search_load",
+   "s": 12.4,
+   "dom_bytes": 1798035,
+   "title": "1,000+ Free Sydney Sweeney & Sydney Images - Pixabay"
+  },
+  {
+   "name": "consent_reject",
+   "s": 0.5,
+   "dom_bytes": 0,
+   "info": "onetrust reject clicked (profiled, 0 snapshot)"
+  },
+  {
+   "name": "collect_links",
+   "s": 0.2,
+   "dom_bytes": 0,
+   "info": "103 photo pages (href scan, 0 extra snapshot)"
+  },
+  {
+   "name": "photo_load",
+   "s": 3.7,
+   "dom_bytes": 434178,
+   "title": "Sydney Harbour - Free photo on Pixabay"
+  },
+  {
+   "name": "free_download_click",
+   "s": 2.7,
+   "dom_bytes": 0,
+   "info": "dialog opened"
+  },
+  {
+   "name": "dialog_scan",
+   "s": 0.2,
+   "dom_bytes": 0,
+   "info": "11 Download buttons (rule-11 overlay noted)"
+  },
+  {
+   "name": "save",
+   "s": 5.6,
+   "dom_bytes": 0,
+   "info": "recipeslive-sydney-993916.jpg 5085881B via normal"
+  }
+ ],
+ "blockers": [],
+ "target": "https://pixabay.com/photos/sydney-sydney-harbour-993916/",
+ "total_s": 28.7,
+ "planner_bytes": 2232213
+}

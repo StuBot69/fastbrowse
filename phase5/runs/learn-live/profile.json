@@ -1,0 +1,52 @@
+{
+ "start_url": "https://www.theguardian.com/technology/artificialintelligenceai",
+ "events": {},
+ "profiles": [],
+ "clicks": 0,
+ "trail_points": 210,
+ "navs": [],
+ "final_url": "https://www.theguardian.com/technology/artificialintelligenceai",
+ "dom_bytes": 492224,
+ "action_map": [],
+ "hover_anchors": [
+  {
+   "selector": "ul.dcr-m3e6yy > li.dcr-jq2eac:nth-of-type(1) > div.dcr-1jzzgh3 > div.dcr-7fugik > a.dcr-idxb0f",
+   "dwell_ms": 2266
+  },
+  {
+   "selector": "section#17-september-2026 > div.dcr-uclib8:nth-of-type(5)",
+   "dwell_ms": 2053
+  },
+  {
+   "selector": "ul.dcr-m3e6yy > li.dcr-jq2eac:nth-of-type(3) > div.dcr-d97svw > div.dcr-7fugik > a.dcr-idxb0f",
+   "dwell_ms": 621
+  }
+ ],
+ "trail_head": [
+  [
+   1170,
+   802,
+   1789648086999
+  ],
+  [
+   1170,
+   800,
+   1789648087753
+  ],
+  [
+   1170,
+   802,
+   1789648086999
+  ],
+  [
+   1170,
+   800,
+   1789648087753
+  ],
+  [
+   1162,
+   773,
+   1789648088108
+  ]
+ ]
+}
