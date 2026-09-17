@@ -48,7 +48,7 @@ SITE = "pixabay.com"
 RUN1_QUERY = "white haired female cyborg"
 RUN2_QUERY = "white haired cyborg woman"
 
-WANT_HAIR = re.compile(r"white|silver|grey|gray|blond|platinum", re.I)
+WANT_HAIR = re.compile(r"white|silver|grey|gray|blond|platinum|red|redhead|ginger|auburn|copper", re.I)
 WANT_WHO = re.compile(r"wom[ae]n|female|girl|lady|cyborg|robot|android", re.I)
 
 
@@ -68,7 +68,9 @@ def score_candidate(alt: str, href: str) -> int:
 
 
 def run_flow(query: str, outdir: Path, profile_dir: Path,
-             blind_mode: bool = False, expect_different_slug: str | None = None) -> dict:
+             blind_mode: bool = False, expect_different_slug: str | None = None,
+             blind_href: str | None = None,
+             verify_ask: str | None = None) -> dict:
     from camoufox.sync_api import Camoufox
 
     outdir.mkdir(parents=True, exist_ok=True)
@@ -158,58 +160,49 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         except Exception as e:
             step("consent_reject", t0, outcome=f"SKIP-ERR {e}"[:80])
 
-        # --- 3. collect photo links WITH alt text; refined pick ---
+        # --- 3. EYES-FIRST pick: grid_hunt shows Jasper the results grid
+        # with numbered tiles; it picks the tile that matches the ask.
+        # No alt-text guessing (rule #16: alt lies — "black and white"
+        # style matched "white hair"). Nothing downloads until eyes verify.
+        # Blind replays skip the hunt: they replay the learned href.
         t0 = now()
-        try:
-            items = page.eval_on_selector_all(
-                "a[href*='/photos/'], a[href*='/illustrations/'], a[href*='/vectors/']",
-                """els => els.slice(0, 120).map(e => ({
-                    href: e.getAttribute('href'),
-                    alt: (e.querySelector('img') || {}).alt || '' }))""")
-        except Exception:
-            items = []
-        seen, cands = set(), []
-        for it in items or []:
-            h = it.get("href") or ""
-            if not h.startswith("/") or h in seen:
-                continue
-            if not re.search(r"/(photos|illustrations|vectors)/.+-\d+/?$", h):
-                continue
-            seen.add(h)
-            cands.append(it)
-        scored = sorted(((score_candidate(c.get("alt", ""), c.get("href", "")), c)
-                         for c in cands), key=lambda t: -t[0])
         pick = None
-        pick_score = 0
-        for score, c in scored:
-            if expect_different_slug and expect_different_slug in c["href"]:
-                continue
-            if score >= 2:  # hair + who
-                pick, pick_score = c, score
-                break
-        fallback = False
-        if not pick and scored:
-            # run-2 fallback: best available that isn't run-1's pick
-            for score, c in scored:
-                if expect_different_slug and expect_different_slug in c["href"]:
-                    continue
-                pick, pick_score = c, score
-                break
-            fallback = True
-        if not pick:
-            full = snapshot_bytes(page)
-            planner_bytes += full
-            step("collect_links", t0, n=len(cands), outcome="FAIL-NO-PHOTO",
-                 planner_bytes=full)
-            raise SystemExit("no photo-page links on search results")
-        learned.append({"label": "photo-link",
-                        "selector": "a[href*='/photos/'], a[href*='/illustrations/'], a[href*='/vectors/']",
-                        "href": pick["href"],
-                        "note": "stable href anchor; alt/slug scored for refined ask"})
-        step("collect_links", t0, n_photo_pages=len(cands),
-             pick_score=pick_score, fallback=fallback,
-             alt=(pick.get("alt") or "")[:70], href=pick["href"][:80],
-             outcome="OK-BLIND")
+        hunt_info: dict = {}
+        if blind_mode and blind_href:
+            pick = {"href": blind_href, "alt": "", "tile_number": -1,
+                    "screen_idx": -1, "n_looks": 0, "replay": True}
+            step("collect_links", t0, href=pick["href"][:80],
+                 outcome="OK-BLIND-REPLAY")
+        else:
+            try:
+                from grid_hunt import grid_hunt
+                found = grid_hunt(
+                    page, ask=query,
+                    item_selector=("a[href*='/photos/'], "
+                                   "a[href*='/illustrations/'], "
+                                   "a[href*='/vectors/']"),
+                    exclude_substr=(expect_different_slug or None),
+                    max_screens=5)
+                pick = {"href": found["href"], "alt": found.get("alt", "")}
+                hunt_info = {k: found[k] for k in
+                             ("tile_number", "screen_idx", "n_looks",
+                              "n_tiles_seen") if k in found}
+                sentinel_bytes += found.get("n_looks", 0) * 800  # ~640px thumbs
+                learned.append({"label": "photo-link",
+                                "selector": "grid_hunt eyes-first pick",
+                                "href": pick["href"],
+                                "note": f"jasper tile {found.get('tile_number')} "
+                                        f"screen {found.get('screen_idx')}, "
+                                        f"{found.get('n_looks')} looks"})
+                step("collect_links", t0, href=pick["href"][:80],
+                     alt=(pick.get("alt") or "")[:60], **hunt_info,
+                     outcome="OK-EYES")
+            except RuntimeError as e:
+                full = snapshot_bytes(page)
+                planner_bytes += full
+                step("collect_links", t0, outcome="FAIL-NO-MATCH",
+                     planner_bytes=full)
+                raise SystemExit(str(e)[:200])
 
         # --- 4. hybrid gate, then open the photo page ---
         t0 = now()
@@ -358,6 +351,26 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
              bytes=downloads[-1].get("bytes") if downloads else 0,
              outcome="OK-BLIND")
 
+        # --- 7. receipt: eyes on the DOWNLOADED file (local Jasper,
+        # 0 metered tokens). The hunt already matched pre-download; this
+        # confirms the file is the ask, not a lookalike.
+        if downloads and not downloads[0].get("error"):
+            t0 = now()
+            try:
+                from grid_hunt import verify_download
+                ok, txt, vs = verify_download(
+                    str(dl_dir / downloads[0]["file"]),
+                    verify_ask or query)
+                step("vision_check", t0, verdict="YES" if ok else "NO",
+                     detail=txt[:120], jasper_s=vs, outcome="OK-EYES")
+                report_vision = {"verdict": "YES" if ok else "NO",
+                                 "detail": txt[:200], "jasper_s": vs}
+            except Exception as e:
+                step("vision_check", t0, outcome=f"SKIP {e}"[:100])
+                report_vision = {"verdict": "SKIP", "detail": str(e)[:120]}
+        else:
+            report_vision = {"verdict": "SKIP", "detail": "no download"}
+
         try:
             browser.close()
         except Exception:
@@ -378,9 +391,11 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         "tokens": {"llm_prompt": 0, "llm_completion": 0, "llm_calls": 0,
                    "planner_bytes": planner_bytes,
                    "est_observation_tokens": planner_bytes // 4,
-                   "note": "browser loop makes zero LLM calls; observation "
-                           "cost that WOULD be tokens = planner_bytes "
-                           "(~bytes/4 tokens, estimate)"},
+                   "note": "browser loop makes zero metered LLM calls; "
+                           "observation cost that WOULD be tokens = "
+                           "planner_bytes (~bytes/4, estimate); jasper "
+                           "vision is local (electricity, not tokens)"},
+        "vision": report_vision,
     }
     (outdir / "run-report.json").write_text(json.dumps(report, indent=1))
     (outdir / "action_map.json").write_text(json.dumps(learned, indent=1))
@@ -415,15 +430,22 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", required=True, choices=["1", "2"])
+    ap.add_argument("--query", default=None,
+                    help="override the built-in query (e.g. red-haired ask)")
     ap.add_argument("--out", default=None)
     ap.add_argument("--tape", default=None)
     ap.add_argument("--profile-dir", default=None)
+    ap.add_argument("--verify", default=None,
+                    help="vision receipt ask (defaults to the query)")
+    ap.add_argument("--blind-href", default=None,
+                    help="replay a known href blind (skips the hunt)")
     args = ap.parse_args()
 
     if args.run == "1":
         out = Path(args.out or str(RUNS_DIR / "cyborg-1"))
-        rep = run_flow(RUN1_QUERY, out,
-                       Path(args.profile_dir or str(out / "profile")))
+        rep = run_flow(args.query or RUN1_QUERY, out,
+                       Path(args.profile_dir or str(out / "profile")),
+                       verify_ask=args.verify)
     else:
         if not args.tape:
             raise SystemExit("--run 2 needs --tape runs/cyborg-1")
@@ -433,9 +455,11 @@ def main() -> None:
             print(f"STALE-FLAG: {prior.get('stale_reason')} — "
                   f"re-learning instead of blind replay")
         out = Path(args.out or str(RUNS_DIR / "cyborg-2"))
-        rep = run_flow(RUN2_QUERY, out,
+        rep = run_flow(args.query or RUN2_QUERY, out,
                        Path(args.profile_dir or str(out / "profile")),
                        blind_mode=not prior.get("needs_relearn"),
+                       blind_href=args.blind_href,
+                       verify_ask=args.verify,
                        expect_different_slug=prior.get("run1_href", "").rsplit("-", 1)[-1][:12] or None)
         r1 = json.loads((Path(args.tape) / "run-report.json").read_text())
         comp = {

@@ -6,10 +6,15 @@
    "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
   },
   {
+   "label": "consent-reject",
+   "selector": "#onetrust-reject-all-handler",
+   "note": "OneTrust; count==1 visible guard (rule #5)"
+  },
+  {
    "label": "photo-link",
-   "selector": "a[href*='/photos/'], a[href*='/illustrations/'], a[href*='/vectors/']",
-   "href": "/photos/girl-black-and-white-light-profile-2806276/",
-   "note": "stable href anchor; alt/slug scored for refined ask"
+   "selector": "grid_hunt eyes-first pick",
+   "href": "/illustrations/ai-generated-woman-cyborg-robot-8582923/",
+   "note": "jasper tile 1 screen 0, 1 looks"
   },
   {
    "label": "free-download-open",
@@ -24,6 +29,6 @@
  ],
  "last_verified": "2026-09-17",
  "schema_version": 1,
- "run1_href": "/photos/girl-black-and-white-light-profile-2806276/",
- "run1_file": "clickerhappy-girl-2806276.jpg"
+ "run1_href": "/illustrations/ai-generated-woman-cyborg-robot-8582923/",
+ "run1_file": "koivuneva-ai-generated-8582923.jpg"
 }

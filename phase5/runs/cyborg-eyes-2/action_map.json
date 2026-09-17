@@ -1,0 +1,28 @@
+[
+ {
+  "label": "pixabay-search-url",
+  "url_template": "https://pixabay.com/images/search/<terms>/",
+  "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
+ },
+ {
+  "label": "consent-reject",
+  "selector": "#onetrust-reject-all-handler",
+  "note": "OneTrust; count==1 visible guard (rule #5)"
+ },
+ {
+  "label": "photo-link",
+  "selector": "grid_hunt eyes-first pick",
+  "href": "/illustrations/ai-generated-woman-cyborg-robot-8582923/",
+  "note": "jasper tile 1 screen 0, 1 looks"
+ },
+ {
+  "label": "free-download-open",
+  "selector": "button:has-text('Free download')",
+  "note": "positional, no stable attrs; opens dialog"
+ },
+ {
+  "label": "original-menuitem",
+  "selector": "[role=menuitem]:has-text('Original')",
+  "note": "Original races download+nav \u2014 click tolerantly, poll handler (rule #15)"
+ }
+]

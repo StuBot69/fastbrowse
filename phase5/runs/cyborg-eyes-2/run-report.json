@@ -1,0 +1,111 @@
+{
+ "query": "female cyborg android robot",
+ "mode": "full-observation",
+ "steps": [
+  {
+   "name": "search_load",
+   "s": 4.3,
+   "dom_bytes": 1923894,
+   "title": "20,000+ Free Female Cyborg Android Robot & Robot Images - Pi",
+   "outcome": "OK-FULL"
+  },
+  {
+   "name": "consent_reject",
+   "s": 1.4,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "collect_links",
+   "s": 14.3,
+   "href": "/illustrations/ai-generated-woman-cyborg-robot-8582923/",
+   "alt": "Free Ai Generated Woman illustration and picture",
+   "tile_number": 1,
+   "screen_idx": 0,
+   "n_looks": 1,
+   "n_tiles_seen": 3,
+   "outcome": "OK-EYES"
+  },
+  {
+   "name": "photo_load",
+   "s": 3.4,
+   "dom_bytes": 444870,
+   "title": "Download Ai Generated, Woman, Cyborg. Royalty-Free Stock Ill",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "free_download_click",
+   "s": 2.2,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "save",
+   "s": 2.0,
+   "via": "download-event",
+   "saved": "koivuneva-ai-generated-8582923.jpg",
+   "bytes": 4467323,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "vision_check",
+   "s": 29.3,
+   "verdict": "YES",
+   "detail": "YES, the image shows a female cyborg with visible artificial and robotic features.",
+   "jasper_s": 29.3,
+   "outcome": "OK-EYES"
+  }
+ ],
+ "blockers": [],
+ "downloads": [
+  {
+   "file": "koivuneva-ai-generated-8582923.jpg",
+   "bytes": 4467323,
+   "url": "https://pixabay.com/get/g666031024785d0c1cf5f11f1aac144737da08f845f178f880a19a54ab8b26281474f25973bd27a77f12528a829d0cba"
+  }
+ ],
+ "learned_actions": [
+  {
+   "label": "pixabay-search-url",
+   "url_template": "https://pixabay.com/images/search/<terms>/",
+   "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
+  },
+  {
+   "label": "consent-reject",
+   "selector": "#onetrust-reject-all-handler",
+   "note": "OneTrust; count==1 visible guard (rule #5)"
+  },
+  {
+   "label": "photo-link",
+   "selector": "grid_hunt eyes-first pick",
+   "href": "/illustrations/ai-generated-woman-cyborg-robot-8582923/",
+   "note": "jasper tile 1 screen 0, 1 looks"
+  },
+  {
+   "label": "free-download-open",
+   "selector": "button:has-text('Free download')",
+   "note": "positional, no stable attrs; opens dialog"
+  },
+  {
+   "label": "original-menuitem",
+   "selector": "[role=menuitem]:has-text('Original')",
+   "note": "Original races download+nav \u2014 click tolerantly, poll handler (rule #15)"
+  }
+ ],
+ "total_s": 61.2,
+ "planner_bytes": 2368764,
+ "sentinel_bytes": 1584,
+ "strikes": 0,
+ "tokens": {
+  "llm_prompt": 0,
+  "llm_completion": 0,
+  "llm_calls": 0,
+  "planner_bytes": 2368764,
+  "est_observation_tokens": 592191,
+  "note": "browser loop makes zero metered LLM calls; observation cost that WOULD be tokens = planner_bytes (~bytes/4, estimate); jasper vision is local (electricity, not tokens)"
+ },
+ "vision": {
+  "verdict": "YES",
+  "detail": "YES, the image shows a female cyborg with visible artificial and robotic features.",
+  "jasper_s": 29.3
+ },
+ "pics_sink": "/Users/user/Downloads/pictures"
+}
