@@ -1,0 +1,106 @@
+{
+ "query": "female cyborg android robot",
+ "mode": "full-observation",
+ "steps": [
+  {
+   "name": "search_load",
+   "s": 10.9,
+   "dom_bytes": 1786676,
+   "title": "20,000+ Free Female Cyborg Android Robot & Robot Images - Pi",
+   "outcome": "OK-FULL"
+  },
+  {
+   "name": "consent_reject",
+   "s": 0.0,
+   "outcome": "SKIP-NONE-VISIBLE"
+  },
+  {
+   "name": "collect_links",
+   "s": 36.0,
+   "href": "/illustrations/ai-generated-woman-cyborg-robot-8582923/",
+   "alt": "Free Ai Generated Woman illustration and picture",
+   "tile_number": 1,
+   "screen_idx": 0,
+   "n_looks": 2,
+   "n_tiles_seen": 3,
+   "outcome": "OK-EYES"
+  },
+  {
+   "name": "photo_load",
+   "s": 3.3,
+   "dom_bytes": 444610,
+   "title": "Download Ai Generated, Woman, Cyborg. Royalty-Free Stock Ill",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "free_download_click",
+   "s": 2.2,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "save",
+   "s": 2.0,
+   "via": "download-event",
+   "saved": "koivuneva-ai-generated-8582923.jpg",
+   "bytes": 2833547,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "vision_check",
+   "s": 29.7,
+   "verdict": "YES",
+   "detail": "YES, the image shows a female figure with a heavily robotic appearance, featuring artificial metallic parts and circuitr",
+   "jasper_s": 29.7,
+   "outcome": "OK-EYES"
+  }
+ ],
+ "blockers": [],
+ "downloads": [
+  {
+   "file": "koivuneva-ai-generated-8582923.jpg",
+   "bytes": 2833547,
+   "url": "https://pixabay.com/get/gea0f787b73ef8e1ca43cbe902791f28f2932f4c63132c39ac132b4d299087fccc85232f672c57c91d374f9e75610d25"
+  }
+ ],
+ "learned_actions": [
+  {
+   "label": "pixabay-search-url",
+   "url_template": "https://pixabay.com/images/search/<terms>/",
+   "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
+  },
+  {
+   "label": "photo-link",
+   "selector": "grid_hunt eyes-first pick",
+   "href": "/illustrations/ai-generated-woman-cyborg-robot-8582923/",
+   "note": "jasper tile 1 screen 0, 2 looks"
+  },
+  {
+   "label": "free-download-open",
+   "selector": "button:has-text('Free download')",
+   "note": "positional, no stable attrs; opens dialog"
+  },
+  {
+   "label": "original-menuitem",
+   "selector": "[role=menuitem]:has-text('Original')",
+   "note": "Original races download+nav \u2014 click tolerantly, poll handler (rule #15)"
+  }
+ ],
+ "total_s": 90.5,
+ "planner_bytes": 2231286,
+ "sentinel_bytes": 2384,
+ "strikes": 0,
+ "tokens": {
+  "llm_prompt": 0,
+  "llm_completion": 0,
+  "llm_calls": 0,
+  "planner_bytes": 2231286,
+  "est_observation_tokens": 557821,
+  "note": "browser loop makes zero metered LLM calls; observation cost that WOULD be tokens = planner_bytes (~bytes/4, estimate); jasper vision is local (electricity, not tokens)"
+ },
+ "vision": {
+  "verdict": "YES",
+  "detail": "YES, the image shows a female figure with a heavily robotic appearance, featuring artificial metallic parts and circuitry integrated into her body and head.",
+  "jasper_s": 29.7
+ },
+ "pics_sink": "/Users/user/Downloads/pictures"
+}

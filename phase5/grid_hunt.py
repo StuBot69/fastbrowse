@@ -72,6 +72,73 @@ def jasper_number_pick(thumb_bytes: bytes, ask: str,
     return got, txt, round(time.time() - t0, 1)
 
 
+def sweep_overlays(page) -> dict:
+    """Pre-look sweep: kill delayed popups/cookie walls/newsletters before
+    we spend a 21s Jasper look at them. DOM-only (~ms, no snapshot, no
+    tokens). Only clicks SINGLE visible matches — never a crowd."""
+    disposed: list = []
+    selectors = [
+        "#onetrust-reject-all-handler",
+        "#onetrust-accept-btn-handler",
+        "[role=dialog] button[aria-label=Close]",
+        "[role=dialog] button[aria-label=Dismiss]",
+        ".modal.show button.close",
+    ]
+    for sel in selectors:
+        try:
+            loc = page.locator(sel)
+            if loc.count() == 1 and loc.first.is_visible():
+                loc.first.click(timeout=3000)
+                disposed.append(sel)
+                try:
+                    page.wait_for_timeout(800)
+                except Exception:
+                    time.sleep(0.8)
+                break  # one disposal per sweep is enough; re-sweep next screen
+        except Exception:
+            continue
+    return {"disposed": disposed, "checked": len(selectors)}
+
+
+def overlay_fingerprint(page) -> dict:
+    """Cheap layout fingerprint: fixed-overlay count + main text length."""
+    try:
+        return page.evaluate(
+            """() => {
+              const fixed = [...document.querySelectorAll('body *')].filter(e => {
+                try {
+                  const s = getComputedStyle(e);
+                  return (s.position === 'fixed' || s.position === 'sticky') &&
+                         e.offsetParent !== null;
+                } catch (x) { return false; }
+              }).length;
+              const main = document.querySelector('main, [role=main], #content');
+              const txt = (main ? main.innerText : document.body.innerText) || '';
+              return {fixed: fixed, len: txt.length};
+            }""") or {}
+    except Exception:
+        return {}
+
+
+def snapshot_gate(page, prev: dict | None) -> dict:
+    """Layout-shift tripwire between sweep and shot. A popup arriving in
+    the gap changes fixed-count or text length — skip the wasted look."""
+    cur = overlay_fingerprint(page)
+    if not prev or not cur:
+        return {"shifted": False, "detail": "no baseline", "cur": cur}
+    df = abs(cur.get("fixed", 0) - prev.get("fixed", 0))
+    pl, cl = prev.get("len", 0), cur.get("len", 0)
+    dl = abs(cl - pl) / max(pl, 1)
+    if df >= 2:
+        return {"shifted": True,
+                "detail": f"fixed overlays {prev.get('fixed')}->{cur.get('fixed')}",
+                "cur": cur}
+    if dl > 0.25 and abs(cl - pl) > 500:
+        return {"shifted": True,
+                "detail": f"main text {pl}->{cl} chars", "cur": cur}
+    return {"shifted": False, "detail": "stable", "cur": cur}
+
+
 def grid_hunt(page, ask: str, item_selector: str,
               href_re: str = r"/(photos|illustrations|vectors)/.+-\d+/?$",
               max_screens: int = 5, exclude_substr: str | None = None,
@@ -84,6 +151,36 @@ def grid_hunt(page, ask: str, item_selector: str,
     vh = (viewport or {}).get("height", 900)
 
     for screen in range(max_screens):
+        # pre-look sweep: delayed popups/cookie walls/newsletters/chat
+        # widgets land AFTER the first consent pass. DOM-only (~ms, no
+        # snapshot, no tokens): dispose via profile, re-settle, THEN shoot.
+        prev = overlay_fingerprint(page)
+        swept = sweep_overlays(page)
+        sweeps = 1 + (1 if swept["disposed"] else 0)
+        if swept["disposed"]:
+            try:
+                page.wait_for_timeout(1200)
+            except Exception:
+                time.sleep(1.2)
+        # layout-shift tripwire: a popup arriving between sweep and shot
+        # changes fixed-count/main-text — skip the wasted Jasper look.
+        gate = snapshot_gate(page, prev)
+        if gate["shifted"]:
+            looks.append({"screen": screen, "gate": "SHIFT-SKIP",
+                          "detail": gate["detail"][:80]})
+            print(f"  [grid_hunt] screen {screen}: layout shift "
+                  f"({gate['detail'][:60]}) — re-sweep, no look burned",
+                  flush=True)
+            sweep_overlays(page)
+            sweeps += 1
+            try:
+                page.wait_for_timeout(1500)
+            except Exception:
+                time.sleep(1.5)
+            gate = snapshot_gate(page, gate["cur"])  # re-check pre-look
+            if gate["shifted"]:
+                _scroll(page, vh)
+                continue
         # visible tiles with viewport-relative boxes
         try:
             tiles = page.evaluate(
@@ -138,7 +235,8 @@ def grid_hunt(page, ask: str, item_selector: str,
             _scroll(page, vh)
             continue
         looks.append({"screen": screen, "n_tiles": len(tiles),
-                      "jasper": raw[:60], "pick": n, "s": s})
+                      "jasper": raw[:60], "pick": n, "s": s,
+                      "sweeps": sweeps})
         print(f"  [grid_hunt] screen {screen}: {len(tiles)} tiles, "
               f"jasper={raw[:40]!r} ({s}s)", flush=True)
         if 1 <= n <= len(tiles):
