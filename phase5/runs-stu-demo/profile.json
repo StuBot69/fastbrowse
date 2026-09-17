@@ -1,0 +1,61 @@
+{
+ "start_url": "https://www.theguardian.com/uk",
+ "events": {},
+ "profiles": [],
+ "clicks": 0,
+ "trail_points": 39,
+ "navs": [
+  {
+   "from": "https://www.theguardian.com/uk",
+   "to": "https://www.theguardian.com/uk-news/ng-interactive/2026/sep/14/royal-crown-branded-africans-britain-monarchy-slave-trade-trafficking"
+  }
+ ],
+ "final_url": "https://www.theguardian.com/uk-news/ng-interactive/2026/sep/14/royal-crown-branded-africans-britain-monarchy-slave-trade-trafficking",
+ "dom_bytes": 486871,
+ "action_map": [],
+ "hover_anchors": [
+  {
+   "selector": "div#img-1 > a.open-lightbox.dcr-zwabc0",
+   "dwell_ms": 13859
+  },
+  {
+   "selector": "div#maincontent > div.article-body-commercial-selector.article-body-viewer-selector",
+   "dwell_ms": 7237
+  },
+  {
+   "selector": "div.dcr-z2afzs > div > div.maybe-later.dcr-bhbp1o > div.dcr-s6b1k3 > div.dcr-1px0qzj:nth-of-type(5)",
+   "dwell_ms": 2802
+  },
+  {
+   "selector": "div.dcr-z2afzs > div > div.maybe-later.dcr-bhbp1o > div.dcr-s6b1k3 > div.dcr-a5x3h4:nth-of-type(4)",
+   "dwell_ms": 1756
+  }
+ ],
+ "trail_head": [
+  [
+   1273,
+   683,
+   1789600415643
+  ],
+  [
+   1253,
+   724,
+   1789600415744
+  ],
+  [
+   1252,
+   746,
+   1789600415844
+  ],
+  [
+   1258,
+   760,
+   1789600415945
+  ],
+  [
+   1309,
+   772,
+   1789600416045
+  ]
+ ]
+}

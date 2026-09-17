@@ -1,0 +1,34 @@
+{
+ "site": "fandom.com",
+ "first_visit": {
+  "url": "https://starwars.fandom.com/wiki/Luke_Skywalker",
+  "load_s": 9.3,
+  "planner_bytes": 28839,
+  "candidates": [],
+  "recorded": []
+ },
+ "revisit": {
+  "log": [
+   {
+    "action": "dispose-overlays",
+    "gate": "MISMATCH",
+    "strikes": 1,
+    "gate_bytes": 1012,
+    "outcome": "HALT-SNAPSHOT",
+    "planner_bytes": 28839
+   },
+   {
+    "action": "open-nav-link",
+    "gate": "MISMATCH",
+    "strikes": 2,
+    "gate_bytes": 1012,
+    "outcome": "ABORT-REPROFILE",
+    "planner_bytes": 28839
+   }
+  ],
+  "strikes": 2,
+  "planner_bytes": 57678,
+  "snapshots_used": 2,
+  "blind_actions": 0
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "profiles": [
+  {
+   "site": "fandom.com",
+   "overlay_signature": "e0cc1fd5b9e45b6a",
+   "overlay_kind": "consent",
+   "selector": "#onetrust-reject-all-handler",
+   "action": "dismiss",
+   "first_seen": "2026-09-16T23:14:27+0100",
+   "last_seen": "2026-09-16T23:14:27+0100",
+   "hits": 1,
+   "overlay_bytes": 2318,
+   "frame_url_pattern": "",
+   "frame_inner_selector": ""
+  }
+ ]
+}

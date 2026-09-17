@@ -1,0 +1,113 @@
+{
+ "site": "fandom.com",
+ "engine": "camofox",
+ "challenge_cleared": true,
+ "first_visit": {
+  "url": "https://starwars.fandom.com/wiki/Luke_Skywalker",
+  "load_s": 13.3,
+  "planner_bytes": 3273145,
+  "candidates": [
+   {
+    "kind": "modal",
+    "visible": true,
+    "sig": "d56f7a8d386c",
+    "bytes": 77
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "9adb75429610",
+    "bytes": 47
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "e0cc1fd5b9e4",
+    "bytes": 2318
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "247a40dacfe4",
+    "bytes": 2187
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "c4d52c2e4afe",
+    "bytes": 10634
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "1a092d99c50b",
+    "bytes": 1642
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "25f7cf54f867",
+    "bytes": 1550
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "cc7fd290fb1c",
+    "bytes": 975
+   },
+   {
+    "kind": "modal",
+    "visible": true,
+    "sig": "6828c16b4060",
+    "bytes": 969
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "0aa678bda4ce",
+    "bytes": 324
+   },
+   {
+    "kind": "consent",
+    "visible": true,
+    "sig": "6ea83bd39e99",
+    "bytes": 245
+   }
+  ],
+  "recorded": [
+   {
+    "kind": "consent",
+    "selector": "#onetrust-reject-all-handler"
+   }
+  ],
+  "map_link": "/wiki/Luke_Skywalker/Legends"
+ },
+ "revisit": {
+  "log": [
+   {
+    "action": "dispose-overlays",
+    "gate": "pass sim=1.000",
+    "strikes": 0,
+    "via": "profile",
+    "oneliner": "handled fandom.com consent (dismiss #onetrust-reject-all-handler)",
+    "effect_ok": true,
+    "effect": "overlay gone",
+    "outcome": "OK-BLIND",
+    "rebased": true
+   },
+   {
+    "action": "open-nav-link",
+    "gate": "pass sim=1.000",
+    "strikes": 0,
+    "via": "click",
+    "effect_ok": true,
+    "effect": "url=https://starwars.fandom.com/wiki/Luke_Skywalker/Legends",
+    "outcome": "OK-BLIND"
+   }
+  ],
+  "strikes": 0,
+  "planner_bytes": 0,
+  "snapshots_used": 0,
+  "blind_actions": 2
+ }
+}
