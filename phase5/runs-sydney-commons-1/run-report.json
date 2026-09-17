@@ -1,0 +1,82 @@
+{
+ "query": "Sydney Sweeney",
+ "mode": "full-observation",
+ "steps": [
+  {
+   "name": "search_load",
+   "s": 7.0,
+   "dom_bytes": 1063211,
+   "title": "Search results for \"Sydney Sweeney\" - Wikimedia Commons",
+   "outcome": "OK-FULL"
+  },
+  {
+   "name": "collect_result",
+   "s": 0.0,
+   "n_results": 40,
+   "target": "/wiki/File:Sydney_Sweeney_2019_by_Glenn_Francis.jpg",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "photo_load",
+   "s": 2.9,
+   "dom_bytes": 1059192,
+   "title": "File:Sydney Sweeney 2019 by Glenn Francis.jpg - Wikimedia Co",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "find_original",
+   "s": 0.0,
+   "href_host": "upload.wikimedia.org",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "save",
+   "s": 1.5,
+   "via": "download-event",
+   "saved": "Sydney_Sweeney_2019_by_Glenn_Francis.jpg",
+   "bytes": 2352739,
+   "outcome": "OK-BLIND"
+  }
+ ],
+ "blockers": [],
+ "downloads": [
+  {
+   "file": "Sydney_Sweeney_2019_by_Glenn_Francis.jpg",
+   "bytes": 2352739,
+   "url": "blob:https://commons.wikimedia.org/e4d3648f-008a-4a0f-822f-d1de4b923141"
+  },
+  {
+   "file": "Sydney_Sweeney_2019_by_Glenn_Francis.jpg",
+   "bytes": 2352739,
+   "url": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Sydney_Sweeney_2019_by_Glenn_Francis.jpg?utm_source=commons.wikimedi"
+  }
+ ],
+ "learned_actions": [
+  {
+   "label": "search-url",
+   "url_template": "https://commons.wikimedia.org/w/index.php?search={q}&title=Special:Search&profile=images&fulltext=1",
+   "note": "file search via Special:Search profile=images"
+  },
+  {
+   "label": "first-file-result",
+   "selector": "a[href*='/wiki/File:']",
+   "href": "/wiki/File:Sydney_Sweeney_2019_by_Glenn_Francis.jpg",
+   "note": "stable href anchor, no class soup"
+  },
+  {
+   "label": "original-file",
+   "selector": "a[href*='upload.wikimedia.org']",
+   "href": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Sydney_Sweeney_2019_by_Glenn_Francis.jpg?utm_source=commons.wikimedi",
+   "note": "stable upload host anchor"
+  }
+ ],
+ "total_s": 18.6,
+ "planner_bytes": 2122403,
+ "sentinel_bytes": 512,
+ "strikes": 0,
+ "tokens": {
+  "llm_prompt": 0,
+  "llm_completion": 0,
+  "note": "browser loop uses no LLM; agent session tokens tracked separately by the harness"
+ }
+}

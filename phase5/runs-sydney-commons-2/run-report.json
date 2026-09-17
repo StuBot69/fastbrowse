@@ -1,0 +1,96 @@
+{
+ "query": "Sydney Sweeney TIFF 2024",
+ "mode": "blind",
+ "steps": [
+  {
+   "name": "search_load",
+   "s": 5.8,
+   "dom_bytes": 1065577,
+   "title": "Search results for \"Sydney Sweeney TIFF 2024\" - Wikimedia Co",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "collect_result",
+   "s": 0.0,
+   "n_results": 40,
+   "target": "/wiki/File:Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04_(Cr",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "gate_before_nav",
+   "s": 0.1,
+   "sim": 1.0,
+   "outcome": "GATE-PASS"
+  },
+  {
+   "name": "photo_load",
+   "s": 3.4,
+   "dom_bytes": 1005696,
+   "title": "File:Sydney Sweeney at the 2024 Toronto International Film F",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "find_original",
+   "s": 0.0,
+   "href_host": "upload.wikimedia.org",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "save",
+   "s": 0.4,
+   "via": "download-event",
+   "saved": "Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04__28Cropped_29.jpg",
+   "bytes": 350494,
+   "outcome": "OK-BLIND"
+  }
+ ],
+ "blockers": [],
+ "downloads": [
+  {
+   "file": "Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04__28Cropped_29.jpg",
+   "bytes": 350494,
+   "url": "blob:https://commons.wikimedia.org/f6d73be9-c4ef-4b15-aa5f-fd8f57eac456"
+  },
+  {
+   "file": "Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04__28Cropped_29.jpg",
+   "bytes": 350494,
+   "url": "https://upload.wikimedia.org/wikipedia/commons/3/35/Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04_%2"
+  }
+ ],
+ "learned_actions": [
+  {
+   "label": "search-url",
+   "url_template": "https://commons.wikimedia.org/w/index.php?search={q}&title=Special:Search&profile=images&fulltext=1",
+   "note": "file search via Special:Search profile=images"
+  },
+  {
+   "label": "first-file-result",
+   "selector": "a[href*='/wiki/File:']",
+   "href": "/wiki/File:Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04_(Cropped).jpg",
+   "note": "stable href anchor, no class soup"
+  },
+  {
+   "label": "original-file",
+   "selector": "a[href*='upload.wikimedia.org']",
+   "href": "https://upload.wikimedia.org/wikipedia/commons/3/35/Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04_%2",
+   "note": "stable upload host anchor"
+  }
+ ],
+ "total_s": 16.3,
+ "planner_bytes": 0,
+ "sentinel_bytes": 1024,
+ "strikes": 0,
+ "tokens": {
+  "llm_prompt": 0,
+  "llm_completion": 0,
+  "note": "browser loop uses no LLM; agent session tokens tracked separately by the harness"
+ },
+ "comparison": {
+  "run1_total_s": 18.6,
+  "run2_total_s": 16.3,
+  "run1_planner_bytes": 2122403,
+  "run2_planner_bytes": 0,
+  "speedup": 1.14,
+  "byte_ratio": "inf (blind used 0 planner bytes)"
+ }
+}

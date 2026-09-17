@@ -1,0 +1,19 @@
+[
+ {
+  "label": "search-url",
+  "url_template": "https://commons.wikimedia.org/w/index.php?search={q}&title=Special:Search&profile=images&fulltext=1",
+  "note": "file search via Special:Search profile=images"
+ },
+ {
+  "label": "first-file-result",
+  "selector": "a[href*='/wiki/File:']",
+  "href": "/wiki/File:Sydney_Sweeney_2019_by_Glenn_Francis.jpg",
+  "note": "stable href anchor, no class soup"
+ },
+ {
+  "label": "original-file",
+  "selector": "a[href*='upload.wikimedia.org']",
+  "href": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Sydney_Sweeney_2019_by_Glenn_Francis.jpg?utm_source=commons.wikimedi",
+  "note": "stable upload host anchor"
+ }
+]

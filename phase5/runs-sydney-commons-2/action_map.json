@@ -1,0 +1,19 @@
+[
+ {
+  "label": "search-url",
+  "url_template": "https://commons.wikimedia.org/w/index.php?search={q}&title=Special:Search&profile=images&fulltext=1",
+  "note": "file search via Special:Search profile=images"
+ },
+ {
+  "label": "first-file-result",
+  "selector": "a[href*='/wiki/File:']",
+  "href": "/wiki/File:Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04_(Cropped).jpg",
+  "note": "stable href anchor, no class soup"
+ },
+ {
+  "label": "original-file",
+  "selector": "a[href*='upload.wikimedia.org']",
+  "href": "https://upload.wikimedia.org/wikipedia/commons/3/35/Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_04_%2",
+  "note": "stable upload host anchor"
+ }
+]
