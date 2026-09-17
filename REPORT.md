@@ -44,10 +44,27 @@ only where knowledge is missing, cheap watchers everywhere else.
 8. Clicks that cause navigation die with their document — mirror the tape Python-side every poll.
 9. Router links to self are not navigation — learned action maps must carry the destination href.
 10. A 12px dead gap kills ANY pointer (human included) — verify hover reachability with elementFromPoint.
+11. Pixabay download dialog: the Download button sits under an `overlay--PRoff`
+    div that intercepts pointer events — normal Playwright click times out;
+    `force=True` sails through. Same hashed-class overlay family as the rest.
+12. Record the REC badge as a pinned `div#__fb_badge` selector — a
+    hashed-class-stripping recorder will otherwise log it as `html > div`
+    and the replay runner will try to click "Finish & Save" as a real step.
+13. Camoufox persistent contexts accept downloads by default; a bare
+    `page.on("download")` handler + `save_as` into the run dir is enough —
+    no `accept_downloads` plumbing needed. Log the file + source URL in profile.json.
+14. Cloudflare ("Just a moment...") kills vanilla Chromium headless dead
+    (0 links, challenge page only) — Camoufox walks straight through.
+    Engine choice IS the bot-wall strategy on hardened sites.
 
 ## Site knowledge
 - Guardian AI topic page: /technology/artificialintelligenceai (NOT /ai or /artificialintelligence; on-site /search dead from here). Freshest links via /<topic>/2026/sep/<day>/all.
 - Guardian consent banner: OneTrust, #onetrust-reject-all-handler / accept — profiled in phase3.
+- Pixabay: search `/images/search/<terms>/`; photo pages `/photos|illustrations|vectors/<slug>-<id>/`.
+  Photo links are stable `a[href]` (no hash) — record href, click by href. The
+  "Free download" button itself has NO stable attrs (positional selector only).
+  17 Sep 26: blind download flow green — search → random photo → OneTrust
+  dismiss → Free download → dialog Download (force-click) → file saved.
 
 ## Repo
 github.com/StuBot69/fastbrowse — all phases + REPORT (this file), tree clean.
