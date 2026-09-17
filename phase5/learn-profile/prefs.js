@@ -10,7 +10,7 @@
 // - set it within a user.js file in your profile.
 
 user_pref("app.update.lastUpdateTime.addon-background-update-timer", 1789600284);
-user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 1789600284);
+user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 1789609681);
 user_pref("app.update.lastUpdateTime.glean-addons-daily", 1789600284);
 user_pref("app.update.lastUpdateTime.region-update-timer", 1789600284);
 user_pref("app.update.lastUpdateTime.services-settings-poll-changes", 1789600284);
@@ -30,7 +30,7 @@ user_pref("browser.policies.runOncePerModification.extensionsUninstall", "[\"goo
 user_pref("browser.proton.toolbar.version", 3);
 user_pref("browser.sessionstore.upgradeBackup.latestBuildID", "20260831224056");
 user_pref("browser.startup.couldRestoreSession.count", 2);
-user_pref("browser.startup.lastColdStartupCheck", 1789600390);
+user_pref("browser.startup.lastColdStartupCheck", 1789609650);
 user_pref("browser.termsofuse.prefMigrationCheck", true);
 user_pref("browser.theme.content-theme", 0);
 user_pref("browser.theme.toolbar-theme", 0);
@@ -53,7 +53,7 @@ user_pref("extensions.pictureinpicture.enable_picture_in_picture_overrides", tru
 user_pref("extensions.signatureCheckpoint", 1);
 user_pref("extensions.webextensions.ExtensionStorageIDB.migrated.uBlock0@raymondhill.net", true);
 user_pref("extensions.webextensions.uuids", "{\"data-leak-blocker@mozilla.com\":\"ae036142-8c0e-4934-8ded-21bf5da14d7c\",\"formautofill@mozilla.org\":\"335e9b3f-9541-4360-a515-692a9a37bbf2\",\"ipp-activator@mozilla.com\":\"e0a399cf-66aa-4cbe-8b70-d752094350ae\",\"pictureinpicture@mozilla.org\":\"3f88557f-ca5c-4d22-ba8c-e5b66395ca6d\",\"addons-search-detection@mozilla.com\":\"496b7089-e7b1-4d29-9b6f-55e2b6fa67d6\",\"webcompat@mozilla.org\":\"9a310967-e580-48bf-b3e8-4eafebbc122d\",\"newtab@mozilla.org\":\"601fd53e-fb4b-45f4-9531-8de2b3057fbe\",\"firefox-compact-dark@mozilla.org\":\"27f56924-7dc7-49e5-9011-6ac259d16679\",\"uBlock0@raymondhill.net\":\"f2ac1d74-cc85-4c0b-b558-7f2d37b455a7\"}");
-user_pref("font.system.whitelist", "Arial,Calibri,Cambria Math,Consolas,Courier New,Georgia,Nirmala UI,Segoe UI,Tahoma,Times New Roman,Trebuchet MS,Verdana,MS PGothic,Microsoft YaHei UI,Yu Gothic UI Light,SimSun,Wingdings,Malgun Gothic,Segoe UI Light,Impact,Microsoft JhengHei Light,Segoe UI Historic,Malgun Gothic Semilight,Yu Gothic UI Semilight,MingLiU_HKSCS-ExtB,游ゴシック,細明體-ExtB,맑은 고딕,Yu Gothic UI Semibold,Yu Gothic Medium,Segoe UI Black,Myanmar Text,PMingLiU-ExtB,新宋体,Microsoft JhengHei UI Light,Microsoft JhengHei UI,微軟正黑體,Twemoji Mozilla,Ink Free,Nirmala UI Semilight,Arial Black,Gabriola,맑은 고딕 Semilight,Cambria,Microsoft YaHei Light,ＭＳ Ｐゴシック,Marlett,Franklin Gothic Medium,Segoe UI Variable,Candara Light,Microsoft YaHei,MS UI Gothic,Yu Gothic,Segoe Script");
+user_pref("font.system.whitelist", "Arial,Calibri,Cambria Math,Consolas,Courier New,Georgia,Nirmala UI,Segoe UI,Tahoma,Times New Roman,Trebuchet MS,Verdana,ＭＳ Ｐゴシック,Yu Gothic UI Light,Lucida Console,Palatino Linotype,細明體-ExtB,游ゴシック Medium,Microsoft YaHei UI Light,SimSun,ＭＳ ゴシック,Segoe UI Semilight,Segoe UI Emoji,Segoe UI Symbol,Sylfaen,Candara,微软雅黑,Microsoft Himalaya,Ink Free,NSimSun,Microsoft PhagsPa,Webdings,Leelawadee UI Semilight,Twemoji Mozilla,Constantia,Microsoft Tai Le,Segoe UI Black,SimSun-ExtB,Microsoft JhengHei UI Light,맑은 고딕 Semilight,Corbel,Bahnschrift,Mongolian Baiti,Javanese Text,Wingdings,Gadugi,Gabriola,Arial Black,Segoe UI Historic,Leelawadee UI,Microsoft YaHei,Segoe UI Variable,Nirmala UI Semilight,Microsoft JhengHei,宋体,MingLiU_HKSCS-ExtB,Yu Gothic,MingLiU-ExtB,Candara Light,Yu Gothic UI Semibold,MS UI Gothic,微軟正黑體 Light,新宋体,Segoe Script,Yu Gothic UI Semilight,游ゴシック,Sitka Text,Microsoft YaHei Light,Segoe Fluent Icons,Microsoft Sans Serif,微软雅黑 Light,Calibri Light,Ebrima,Symbol,Segoe UI Light,Microsoft YaHei UI,Microsoft New Tai Lue,Microsoft JhengHei UI,Yu Gothic UI,Franklin Gothic Medium");
 user_pref("gecko.handlerService.defaultHandlersVersion", 1);
 user_pref("media.getdisplaymedia.screencapturekit.enabled", false);
 user_pref("media.getdisplaymedia.screencapturekit.picker.enabled", false);
@@ -69,14 +69,14 @@ user_pref("pdfjs.migrationVersion", 2);
 user_pref("privacy.bounceTrackingProtection.hasMigratedUserActivationData", true);
 user_pref("privacy.clearOnShutdown_v2.formdata", true);
 user_pref("privacy.sanitize.clearOnShutdown.hasMigratedToNewPrefs3", true);
-user_pref("privacy.sanitize.pending", "[]");
+user_pref("privacy.sanitize.pending", "[{\"id\":\"newtab-container\",\"itemsToClear\":[],\"options\":{}}]");
 user_pref("privacy.trackingprotection.allow_list.hasMigratedCategoryPrefs", true);
 user_pref("security.sandbox.warn_unprivileged_namespaces", false);
 user_pref("sidebar.backupState", "{\"command\":\"\",\"panelOpen\":false,\"bookmarksExpandedFolders\":[],\"launcherExpanded\":false,\"launcherVisible\":false}");
 user_pref("sidebar.visibility", "hide-sidebar");
 user_pref("toolkit.profiles.newProfileSubmitted", true);
 user_pref("toolkit.profiles.storeID", "73bf0536");
-user_pref("toolkit.startup.last_success", 1789600387);
+user_pref("toolkit.startup.last_success", 1789609647);
 user_pref("toolkit.telemetry.cachedClientID", "c0ffeec0-ffee-c0ff-eec0-ffeec0ffeec0");
 user_pref("toolkit.telemetry.cachedProfileGroupID", "decafdec-afde-cafd-ecaf-decafdecafde");
 user_pref("toolkit.telemetry.previousBuildID", "20260831224056");

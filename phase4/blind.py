@@ -235,10 +235,14 @@ def run_blind(page, actions: list, baseline, store: ProfileStore | None = None,
 
 
 def launch_browser(pw, engine: str, headless: bool):
-    """Launch chromium (Playwright) or camofox (Firefox anti-detect)."""
+    """Launch chromium (Playwright) or camofox (Firefox anti-detect).
+
+    Camoufox is a context manager — enter it and return the live
+    Browser/BrowserContext it yields (has new_context OR new_page)."""
     if engine == "camofox":
         from camoufox.sync_api import Camoufox
-        return Camoufox(headless=headless)
+        cm = Camoufox(headless=headless)
+        return cm.__enter__()
     return pw.chromium.launch(headless=headless)
 
 
@@ -262,19 +266,22 @@ def fresh_page(browser, width: int = 1366, height: int = 900):
             return browser.new_page(viewport={"width": width, "height": height})
         except TypeError:
             return browser.new_page()
-    ctx = browser.new_context(viewport={"width": width, "height": height})
-    return ctx.new_page()
+    try:
+        ctx = browser.new_context(viewport={"width": width, "height": height})
+        return ctx.new_page()
+    except Exception:
+        return browser.new_page()  # camoufox context: pages only
 
 
 def cmd_demo_fandom(outdir: Path, headless: bool = True, engine: str = "chromium") -> dict:
     """Stress test: fandom wiki overlay gauntlet, record -> revisit blind."""
-    from playwright.sync_api import sync_playwright
     outdir.mkdir(parents=True, exist_ok=True)
     store = ProfileStore(outdir / "profiles.json")
     if engine == "camofox":
         from camoufox.sync_api import Camoufox
         with Camoufox(headless=headless) as browser:
             return _demo_flow(browser, outdir, store, engine)
+    from playwright.sync_api import sync_playwright
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=headless)
         try:

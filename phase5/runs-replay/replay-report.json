@@ -1,0 +1,29 @@
+{
+ "tape": "runs-fixture",
+ "url": "file:///Users/user/Projects/fastbrowse/phase6/fixture.html",
+ "n_actions": 1,
+ "replay": {
+  "log": [
+   {
+    "action": "Widgets",
+    "gate": "pass sim=1.000",
+    "strikes": 0,
+    "via": "click",
+    "effect_ok": true,
+    "effect": "url=file:///Users/user/Projects/fastbrowse/phase6/fixture.html#widgets",
+    "outcome": "OK-BLIND"
+   }
+  ],
+  "approach_stats": [
+   {
+    "label": "Widgets",
+    "approach_pts": 2,
+    "approach_fail": 0
+   }
+  ],
+  "strikes": 0,
+  "planner_bytes": 0,
+  "snapshots_used": 0,
+  "blind_actions": 1
+ }
+}
