@@ -1,0 +1,108 @@
+{
+ "query": "test",
+ "mode": "full-observation",
+ "steps": [
+  {
+   "name": "search_load",
+   "s": 14.8,
+   "dom_bytes": 1705580,
+   "title": "1,000+ Free Test & Lab Images - Pixabay",
+   "outcome": "OK-FULL"
+  },
+  {
+   "name": "consent_reject",
+   "s": 1.5,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "collect_links",
+   "s": 0.1,
+   "href": "/photos/test-tubes-chemistry-glass-red-904546/",
+   "alt": "Free Test Tubes Chemistry photo and picture",
+   "tile_number": -1,
+   "screen_idx": -1,
+   "n_looks": 0,
+   "n_tiles_seen": 57,
+   "outcome": "OK-NO-VISION-FALLBACK"
+  },
+  {
+   "name": "photo_load",
+   "s": 3.8,
+   "dom_bytes": 905026,
+   "title": "Test Tubes Chemistry Glass - Free photo on Pixabay",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "free_download_click",
+   "s": 2.1,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "save",
+   "s": 3.1,
+   "via": "download-event",
+   "saved": "crsssteve-test-tubes-904546.jpg",
+   "bytes": 425354,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "vision_check",
+   "s": 0.0,
+   "outcome": "SKIP-NO-VISION",
+   "detail": "no vision endpoint; unverified"
+  }
+ ],
+ "blockers": [],
+ "downloads": [
+  {
+   "file": "crsssteve-test-tubes-904546.jpg",
+   "bytes": 425354,
+   "url": "https://pixabay.com/get/g9030506b857eafeb6119bb44e645f72061416cf1133af9e61bca417a9ba6d8c6960e19bb364f62d1a11590d86e0eb37"
+  }
+ ],
+ "learned_actions": [
+  {
+   "label": "pixabay-search-url",
+   "url_template": "https://pixabay.com/images/search/<terms>/",
+   "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
+  },
+  {
+   "label": "consent-reject",
+   "selector": "#onetrust-reject-all-handler",
+   "note": "OneTrust; count==1 visible guard (rule #5)"
+  },
+  {
+   "label": "photo-link",
+   "selector": "grid_hunt eyes-first pick",
+   "href": "/photos/test-tubes-chemistry-glass-red-904546/",
+   "note": "no vision endpoint; first-result fallback"
+  },
+  {
+   "label": "free-download-open",
+   "selector": "button:has-text('Free download')",
+   "note": "positional, no stable attrs; opens size menu (photos) or downloads direct (vectors)"
+  },
+  {
+   "label": "original-menuitem",
+   "selector": "[role=menuitem]:has-text('Original')",
+   "note": "Original races download+nav \u2014 click tolerantly, poll handler (rule #15)"
+  }
+ ],
+ "total_s": 36.0,
+ "planner_bytes": 2610606,
+ "sentinel_bytes": 784,
+ "strikes": 0,
+ "tokens": {
+  "llm_prompt": 0,
+  "llm_completion": 0,
+  "llm_calls": 0,
+  "planner_bytes": 2610606,
+  "est_observation_tokens": 652651,
+  "note": "browser loop makes zero metered LLM calls; observation cost that WOULD be tokens = planner_bytes (~bytes/4, estimate); jasper vision is local (electricity, not tokens)"
+ },
+ "vision": {
+  "verdict": "SKIP",
+  "detail": "no vision endpoint; unverified"
+ },
+ "pics_sink": "/Users/user/Downloads/pictures"
+}

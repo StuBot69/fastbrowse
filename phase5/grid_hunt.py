@@ -37,45 +37,87 @@ import fb_config  # noqa: E402  (shared env-overridable config)
 
 JASPER_URL = os.environ.get("FASTBROWSE_VISION_URL", fb_config.VISION_URL)
 JASPER_MODEL = os.environ.get("FASTBROWSE_VISION_MODEL", fb_config.VISION_MODEL)
+FALLBACK_URL = os.environ.get("FASTBROWSE_FALLBACK_URL", fb_config.FALLBACK_URL)
+FALLBACK_MODEL = os.environ.get("FASTBROWSE_FALLBACK_MODEL", fb_config.FALLBACK_MODEL)
+
+# Groq API key — read from env or age vault
+GROQ_API_KEY = os.environ.get("FASTBROWSE_GROQ_API_KEY", "")
+if not GROQ_API_KEY:
+    try:
+        import sqlite3, base64
+        _db = sqlite3.connect(str(Path.home() / "Projects" / "agent-economy" /
+                                  "state" / "agent_economy.db"))
+        _row = _db.execute(
+            "SELECT value FROM credentials WHERE provider='groq-heroeco' LIMIT 1"
+        ).fetchone()
+        if _row:
+            GROQ_API_KEY = base64.b64decode(_row[0]).decode()
+        _db.close()
+    except Exception:
+        pass
 
 
-def jasper_number_pick(thumb_bytes: bytes, ask: str,
-                       timeout: int = 300) -> tuple[int, str, float]:
-    """Send annotated thumbnail, get back (number, raw_text, seconds)."""
-    from PIL import Image
+def _vision_call(url: str, model: str, thumb_bytes: bytes, ask: str,
+                 max_tokens: int = 20, timeout: int = 300,
+                 api_key: str = "") -> tuple[int, str, float]:
+    """Send annotated thumbnail to an OpenAI-compatible vision endpoint.
+    Returns (number, raw_text, seconds)."""
+    import base64 as _b64
+    from PIL import Image as _Im
     t0 = time.time()
-    # keep it small: hunting doesn't need detail, position does
-    im = Image.open(io.BytesIO(thumb_bytes))
+    im = _Im.open(io.BytesIO(thumb_bytes))
     im.thumbnail((640, 640))
     if im.mode != "RGB":
         im = im.convert("RGB")
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=60)
-    b64 = base64.b64encode(buf.getvalue()).decode()
+    b64img = _b64.b64encode(buf.getvalue()).decode()
     q = (f"Numbered image tiles, each with a red number badge. "
          f"Which tile best shows: {ask}? "
          f"Only pick a tile that CLEARLY shows it — ordinary photos "
          f"without those features are NOT a match. "
          f"Reply with the NUMBER only. Reply 0 if none match.")
     payload = json.dumps({
-        "model": JASPER_MODEL,
+        "model": model,
         "messages": [{"role": "user", "content": [
             {"type": "text", "text": q},
             {"type": "image_url", "image_url": {
-                "url": "data:image/jpeg;base64," + b64}}]}],
-        "max_tokens": 20,
+                "url": "data:image/jpeg;base64," + b64img}}]}],
+        "max_tokens": max_tokens,
     }).encode()
-    req = urllib.request.Request(JASPER_URL, data=payload,
-                                 headers={"Content-Type": "application/json"})
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    req = urllib.request.Request(url, data=payload, headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = json.load(r)
     txt = data["choices"][0]["message"]["content"].strip()
     m = re.search(r"\d+", txt)
     got = int(m.group()) if m else 0
-    # guard: small-model miscounts (tile numbers exceed visible count).
-    # Caller passes n_tiles via the validated range — clamp here by
-    # returning raw and letting grid_hunt re-ask on out-of-range.
     return got, txt, round(time.time() - t0, 1)
+
+
+def jasper_number_pick(thumb_bytes: bytes, ask: str,
+                       timeout: int = 300) -> tuple[int, str, float]:
+    """Try Jasper (Qwen) first, fall back to Groq (Llama) if unavailable."""
+    # Try primary (Jasper Qwen)
+    try:
+        return _vision_call(JASPER_URL, JASPER_MODEL, thumb_bytes, ask,
+                            timeout=timeout)
+    except Exception as e:
+        print(f"  [jasper_number_pick] Jasper failed: {e}", flush=True)
+
+    # Try fallback (Groq Llama)
+    if GROQ_API_KEY:
+        try:
+            print(f"  [jasper_number_pick] Falling back to Groq {FALLBACK_MODEL}",
+                  flush=True)
+            return _vision_call(FALLBACK_URL, FALLBACK_MODEL, thumb_bytes, ask,
+                                timeout=timeout, api_key=GROQ_API_KEY)
+        except Exception as e:
+            print(f"  [jasper_number_pick] Groq fallback failed: {e}", flush=True)
+
+    raise RuntimeError("No vision endpoint available (Jasper + Groq both down)")
 
 
 def _badged_thumb(shot: bytes, tiles: list, vw: int, vh: int) -> bytes:
