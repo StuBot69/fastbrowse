@@ -457,31 +457,48 @@ def verify_download(path: str, ask: str,
                     timeout: int = 300) -> tuple[bool, str, float]:
     """Eyes on the DOWNLOADED file: YES/NO + sentence. (Post-download
     gate — the pre-download hunt should already have matched, this is
-    the receipt.)"""
-    import base64
-    from PIL import Image
+    the receipt.)
+
+    Uses _vision_call with Jasper→Groq fallback, same as jasper_number_pick.
+    """
+    import base64 as _b64
+    from PIL import Image as _Im
     t0 = time.time()
-    im = Image.open(path)
+    im = _Im.open(path)
     im.thumbnail((768, 768))
     if im.mode != "RGB":
         im = im.convert("RGB")
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=70)
-    b64 = base64.b64encode(buf.getvalue()).decode()
+    b64img = _b64.b64encode(buf.getvalue()).decode()
     q = (f"Does this image show: {ask}? "
          f"Start your answer with YES or NO, then one short sentence.")
-    payload = json.dumps({
-        "model": JASPER_MODEL,
-        "messages": [{"role": "user", "content": [
-            {"type": "text", "text": q},
-            {"type": "image_url", "image_url": {
-                "url": "data:image/jpeg;base64," + b64}}]}],
-        "max_tokens": 80,
-    }).encode()
-    req = urllib.request.Request(JASPER_URL, data=payload,
-                                 headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = json.load(r)
-    txt = data["choices"][0]["message"]["content"].strip()
-    s = round(time.time() - t0, 1)
-    return txt.upper().startswith("YES"), txt, s
+
+    # Try Jasper first, then Groq fallback
+    for url, model, key in [
+        (JASPER_URL, JASPER_MODEL, ""),
+        (FALLBACK_URL, FALLBACK_MODEL, GROQ_API_KEY),
+    ]:
+        try:
+            payload = json.dumps({
+                "model": model,
+                "messages": [{"role": "user", "content": [
+                    {"type": "text", "text": q},
+                    {"type": "image_url", "image_url": {
+                        "url": "data:image/jpeg;base64," + b64img}}]}],
+                "max_tokens": 80,
+            }).encode()
+            headers = {"Content-Type": "application/json"}
+            if key:
+                headers["Authorization"] = f"Bearer {key}"
+            req = urllib.request.Request(url, data=payload, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                data = json.load(r)
+            txt = data["choices"][0]["message"]["content"].strip()
+            s = round(time.time() - t0, 1)
+            return txt.upper().startswith("YES"), txt, s
+        except Exception as e:
+            print(f"  [verify_download] {model} failed: {e}", flush=True)
+            continue
+
+    raise RuntimeError("verify_download: no vision endpoint available")
