@@ -20,18 +20,23 @@ Usage:
 """
 import argparse
 import json
+import os
 import re
 import sys
 import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-RUNS_DIR = HERE / "runs"
-PICS_DIR = Path.home() / "Downloads" / "pictures"
-SITES_DIR = HERE / "sites"
+sys.path.insert(0, str(HERE.parent))  # fb_config lives at repo root
 sys.path.insert(0, str(HERE.parent / "phase4"))
 sys.path.insert(0, str(HERE.parent / "phase3"))
 sys.path.insert(0, str(HERE.parent))
+
+import fb_config  # noqa: E402
+RUNS_DIR = fb_config.RUNS_DIR
+PICS_DIR = fb_config.PICS_DIR
+SITES_DIR = fb_config.SITES_DIR
+ENGINE = os.environ.get("FASTBROWSE_ENGINE", fb_config.ENGINE)
 
 from blind import (  # noqa: E402
     hybrid_baseline,
@@ -67,6 +72,31 @@ def score_candidate(alt: str, href: str) -> int:
     return s
 
 
+def first_result_fallback(page, exclude_substr: str | None = None) -> dict:
+    """No-vision degrade: best alt/slug-scored photo link (rule #16
+    caveat — alt lies; receipt will SKIP so the caller knows)."""
+    try:
+        items = page.eval_on_selector_all(
+            "a[href*='/photos/'], a[href*='/illustrations/'], a[href*='/vectors/']",
+            """els => els.slice(0, 60).map(e => ({
+                href: e.getAttribute('href'),
+                alt: (e.querySelector('img') || {}).alt || '' }))""")
+    except Exception:
+        items = []
+    cands = [it for it in (items or [])
+             if (it.get("href") or "").startswith("/")
+             and re.search(r"/(photos|illustrations|vectors)/.+-\d+/?$",
+                           it.get("href") or "")
+             and not (exclude_substr and exclude_substr in it["href"])]
+    if not cands:
+        raise RuntimeError("no photo-page links (no-vision fallback)")
+    best = max(cands, key=lambda c: score_candidate(c.get("alt", ""),
+                                                    c.get("href", "")))
+    return {"href": best["href"], "alt": best.get("alt", ""),
+            "tile_number": -1, "screen_idx": -1, "n_looks": 0,
+            "n_tiles_seen": len(cands)}
+
+
 def run_flow(query: str, outdir: Path, profile_dir: Path,
              blind_mode: bool = False, expect_different_slug: str | None = None,
              blind_href: str | None = None,
@@ -99,6 +129,14 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
             page = browser.new_page()
         except Exception:
             page = browser.new_context().new_page()
+        # pin the viewport: Camoufox persistent pages ignore the requested
+        # size and open huge (1600x1058+), which breaks badge scaling
+        # (grid_hunt assumes 1366x900) and hides the consent buttons
+        # below the fold where the sweep's is_visible check can miss them.
+        try:
+            page.set_viewport_size({"width": 1366, "height": 900})
+        except Exception:
+            pass
 
         downloads: list = []
 
@@ -176,13 +214,28 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         else:
             try:
                 from grid_hunt import grid_hunt
-                found = grid_hunt(
-                    page, ask=query,
-                    item_selector=("a[href*='/photos/'], "
-                                   "a[href*='/illustrations/'], "
-                                   "a[href*='/vectors/']"),
-                    exclude_substr=(expect_different_slug or None),
-                    max_screens=5)
+                if fb_config.vision_available():
+                    found = grid_hunt(
+                        page, ask=query,
+                        item_selector=("a[href*='/photos/'], "
+                                       "a[href*='/illustrations/'], "
+                                       "a[href*='/vectors/']"),
+                        exclude_substr=(expect_different_slug or None),
+                        min_tiles=4,
+                        max_screens=5)
+                    how_pick = "OK-EYES"
+                    note = (f"jasper tile {found.get('tile_number')} "
+                            f"screen {found.get('screen_idx')}, "
+                            f"{found.get('n_looks')} looks")
+                else:
+                    # graceful degrade: no vision endpoint — first result
+                    # that isn't the excluded slug. Receipt will SKIP.
+                    print("  [collect_links] NO-VISION: first-result fallback",
+                          flush=True)
+                    found = first_result_fallback(
+                        page, exclude_substr=expect_different_slug)
+                    how_pick = "OK-NO-VISION-FALLBACK"
+                    note = "no vision endpoint; first-result fallback"
                 pick = {"href": found["href"], "alt": found.get("alt", "")}
                 hunt_info = {k: found[k] for k in
                              ("tile_number", "screen_idx", "n_looks",
@@ -191,12 +244,10 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
                 learned.append({"label": "photo-link",
                                 "selector": "grid_hunt eyes-first pick",
                                 "href": pick["href"],
-                                "note": f"jasper tile {found.get('tile_number')} "
-                                        f"screen {found.get('screen_idx')}, "
-                                        f"{found.get('n_looks')} looks"})
+                                "note": note})
                 step("collect_links", t0, href=pick["href"][:80],
                      alt=(pick.get("alt") or "")[:60], **hunt_info,
-                     outcome="OK-EYES")
+                     outcome=how_pick)
             except RuntimeError as e:
                 full = snapshot_bytes(page)
                 planner_bytes += full
@@ -244,16 +295,19 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
              outcome="OK-BLIND" if ok_nav else "FAIL-NAV")
 
         # --- 5. Free download button (positional, no stable attrs — rule #9
-        # site knowledge). Click opens the dialog. ---
+        # site knowledge). Photos open the Original size menu (rule #15);
+        # vectors/illustrations may download DIRECTLY here (SVG, no menu).
+        # So: arm the download poll FIRST, click, accept an event within
+        # 8s as a direct download; else fall through to the menu flow.
         t0 = now()
+        dl_before = len([d for d in downloads if not d.get("error")])
         try:
-            btn = page.locator("button:has-text('Free download')").first
-            btn.wait_for(state="visible", timeout=10000)
-            btn.click(timeout=8000)
+            page.locator("button:has-text('Free download')").first.click(timeout=8000)
             page.wait_for_timeout(2000)
             learned.append({"label": "free-download-open",
                             "selector": "button:has-text('Free download')",
-                            "note": "positional, no stable attrs; opens dialog"})
+                            "note": "positional, no stable attrs; opens size "
+                                    "menu (photos) or downloads direct (vectors)"})
             step("free_download_click", t0, outcome="OK-BLIND")
         except Exception as e:
             full = snapshot_bytes(page)
@@ -261,91 +315,106 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
             step("free_download_click", t0, outcome=f"FAIL {e}"[:100],
                  planner_bytes=full)
             raise SystemExit(f"Free download button missing: {e}")
-
-        # --- 6. Free-download opens a radial size menu (role=menuitem),
-        # NOT a dialog. Clicking Original fires the download event FIRST,
-        # then the page races toward the /get/ file URL — the click call
-        # itself usually dies with a nav error, which is EXPECTED. So: open
-        # the menu if needed, click tolerantly, poll the download handler
-        # for a REAL file (>50KB; canva stubs ~3KB). No expect_download (it
-        # loses the race), no /get/ re-GET (single-use URL). Rule #15. ---
         t0 = now()
-        how = None
-        try:
-            for _ in range(3):
-                try:
-                    n = page.locator("[role=menuitem]").count()
-                except Exception:
-                    n = 0
-                if n and n > 0:
-                    break
-                page.locator("button:has-text('Free download')").first.click(
-                    timeout=8000)
-                page.wait_for_timeout(2000)
-            menu = page.locator("[role=menuitem]:has-text('Original')")
-            # Fire-and-forget clicks: the download fires first, then the
-            # page navigates to /get/ and every locator dies. So NEVER wait
-            # on the click result — click, ignore everything, poll handler.
-            def _poll_real(secs: float) -> list:
-                t = now()
-                real = [d for d in downloads
-                        if not d.get("error") and (d.get("bytes") or 0) > 50_000]
-                while now() - t < secs and not real:
+        direct = [d for d in downloads[dl_before:]
+                  if not d.get("error") and (d.get("bytes") or 0) > 1000]
+        if direct:
+            # vector path: the file already arrived, no Original menu.
+            # SVGs are small — accept anything >1KB (photos need >50KB).
+            downloads[:] = [d for d in downloads if not d.get("error")]
+            how = "download-direct"
+            learned.append({"label": "direct-download",
+                            "selector": "button:has-text('Free download')",
+                            "note": "vectors download direct, no size menu"})
+            step("save", t0, via=how,
+                 saved=downloads[-1].get("file") if downloads else None,
+                 bytes=downloads[-1].get("bytes") if downloads else 0,
+                 outcome="OK-BLIND")
+        else:
+            # --- 6. Free-download opens a radial size menu (role=menuitem),
+            # NOT a dialog. Clicking Original fires the download event FIRST,
+            # then the page races toward the /get/ file URL — the click call
+            # itself usually dies with a nav error, which is EXPECTED. So: open
+            # the menu if needed, click tolerantly, poll the download handler
+            # for a REAL file (>50KB; canva stubs ~3KB). No expect_download (it
+            # loses the race), no /get/ re-GET (single-use URL). Rule #15. ---
+            t0 = now()
+            how = None
+            try:
+                for _ in range(3):
                     try:
-                        page.wait_for_timeout(1000)
+                        n = page.locator("[role=menuitem]").count()
                     except Exception:
-                        time.sleep(1)
+                        n = 0
+                    if n and n > 0:
+                        break
+                    page.locator("button:has-text('Free download')").first.click(
+                        timeout=8000)
+                    page.wait_for_timeout(2000)
+                menu = page.locator("[role=menuitem]:has-text('Original')")
+                # Fire-and-forget clicks: the download fires first, then the
+                # page navigates to /get/ and every locator dies. So NEVER wait
+                # on the click result — click, ignore everything, poll handler.
+                def _poll_real(secs: float) -> list:
+                    t = now()
                     real = [d for d in downloads
-                            if not d.get("error")
-                            and (d.get("bytes") or 0) > 50_000]
-                return real
-            real = _poll_real(5)  # maybe it already fired (fast /get/ redirect)
-            if not real:
-                try:
-                    menu.first.wait_for(state="attached", timeout=8000)
-                    try:
-                        # JS click returns immediately — no nav-wait race
-                        menu.first.evaluate("(el) => el.click()")
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
-                real = _poll_real(20)
-            if not real:
-                # last resort: coords click, also fire-and-forget
-                try:
-                    box = menu.first.bounding_box(timeout=5000)
-                    if box:
+                            if not d.get("error") and (d.get("bytes") or 0) > 50_000]
+                    while now() - t < secs and not real:
                         try:
-                            page.mouse.click(box["x"] + box["width"] / 2,
-                                             box["y"] + box["height"] / 2)
+                            page.wait_for_timeout(1000)
+                        except Exception:
+                            time.sleep(1)
+                        real = [d for d in downloads
+                                if not d.get("error")
+                                and (d.get("bytes") or 0) > 50_000]
+                    return real
+                real = _poll_real(5)  # maybe already fired (fast redirect)
+                if not real:
+                    try:
+                        menu.first.wait_for(state="attached", timeout=8000)
+                        try:
+                            # JS click returns immediately — no nav-wait race
+                            menu.first.evaluate("(el) => el.click()")
                         except Exception:
                             pass
-                except Exception:
-                    pass
-                real = _poll_real(30)
-            if not real:
-                raise RuntimeError("no download event after Original click")
-            # only the real file survives: drop canva HTML stubs etc.
-            downloads[:] = real
-            # sweep any stub files the handler already saved to disk
-            for f in dl_dir.iterdir():
-                if f.is_file() and f.stat().st_size < 50_000:
-                    try:
-                        f.unlink()
                     except Exception:
                         pass
-            how = "download-event"
-            learned.append({"label": "original-menuitem",
-                            "selector": "[role=menuitem]:has-text('Original')",
-                            "note": "Original races download+nav — click "
-                                    "tolerantly, poll handler (rule #15)"})
-        except Exception as e:
-            full = snapshot_bytes(page)
-            planner_bytes += full
-            step("save", t0, outcome=f"FAIL-DL {e}"[:100],
-                 planner_bytes=full)
-            raise SystemExit(f"dialog download failed: {e}")
+                    real = _poll_real(20)
+                if not real:
+                    # last resort: coords click, also fire-and-forget
+                    try:
+                        box = menu.first.bounding_box(timeout=5000)
+                        if box:
+                            try:
+                                page.mouse.click(box["x"] + box["width"] / 2,
+                                                 box["y"] + box["height"] / 2)
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    real = _poll_real(30)
+                if not real:
+                    raise RuntimeError("no download event after Original click")
+                # only the real file survives: drop canva HTML stubs etc.
+                downloads[:] = real
+                # sweep any stub files the handler already saved to disk
+                for f in dl_dir.iterdir():
+                    if f.is_file() and f.stat().st_size < 50_000:
+                        try:
+                            f.unlink()
+                        except Exception:
+                            pass
+                how = "download-event"
+                learned.append({"label": "original-menuitem",
+                                "selector": "[role=menuitem]:has-text('Original')",
+                                "note": "Original races download+nav — click "
+                                        "tolerantly, poll handler (rule #15)"})
+            except Exception as e:
+                full = snapshot_bytes(page)
+                planner_bytes += full
+                step("save", t0, outcome=f"FAIL-DL {e}"[:100],
+                     planner_bytes=full)
+                raise SystemExit(f"dialog download failed: {e}")
         step("save", t0, via=how,
              saved=downloads[-1].get("file") if downloads else None,
              bytes=downloads[-1].get("bytes") if downloads else 0,
@@ -356,18 +425,25 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         # confirms the file is the ask, not a lookalike.
         if downloads and not downloads[0].get("error"):
             t0 = now()
-            try:
-                from grid_hunt import verify_download
-                ok, txt, vs = verify_download(
-                    str(dl_dir / downloads[0]["file"]),
-                    verify_ask or query)
-                step("vision_check", t0, verdict="YES" if ok else "NO",
-                     detail=txt[:120], jasper_s=vs, outcome="OK-EYES")
-                report_vision = {"verdict": "YES" if ok else "NO",
-                                 "detail": txt[:200], "jasper_s": vs}
-            except Exception as e:
-                step("vision_check", t0, outcome=f"SKIP {e}"[:100])
-                report_vision = {"verdict": "SKIP", "detail": str(e)[:120]}
+            if not fb_config.vision_available():
+                step("vision_check", t0, outcome="SKIP-NO-VISION",
+                     detail="no vision endpoint; unverified")
+                report_vision = {"verdict": "SKIP",
+                                 "detail": "no vision endpoint; unverified"}
+            else:
+                try:
+                    from grid_hunt import verify_download
+                    ok, txt, vs = verify_download(
+                        str(dl_dir / downloads[0]["file"]),
+                        verify_ask or query)
+                    step("vision_check", t0, verdict="YES" if ok else "NO",
+                         detail=txt[:120], jasper_s=vs, outcome="OK-EYES")
+                    report_vision = {"verdict": "YES" if ok else "NO",
+                                     "detail": txt[:200], "jasper_s": vs}
+                except Exception as e:
+                    step("vision_check", t0, outcome=f"SKIP {e}"[:100])
+                    report_vision = {"verdict": "SKIP",
+                                     "detail": str(e)[:120]}
         else:
             report_vision = {"verdict": "SKIP", "detail": "no download"}
 

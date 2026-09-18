@@ -1,0 +1,92 @@
+{
+ "query": "red haired cyborg woman",
+ "mode": "full-observation",
+ "steps": [
+  {
+   "name": "search_load",
+   "s": 11.4,
+   "dom_bytes": 1866591,
+   "title": "40,000+ Free Red Haired Cyborg Woman & Woman Images - Pixaba",
+   "outcome": "OK-FULL"
+  },
+  {
+   "name": "consent_reject",
+   "s": 0.0,
+   "outcome": "SKIP-NONE-VISIBLE"
+  },
+  {
+   "name": "collect_links",
+   "s": 0.1,
+   "n_photo_pages": 94,
+   "pick_score": 3,
+   "fallback": false,
+   "alt": "Free Red Hair Girl Beautiful Girl photo and picture",
+   "href": "/photos/red-hair-girl-beautiful-girl-8158373/",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "photo_load",
+   "s": 3.7,
+   "dom_bytes": 446850,
+   "title": "Red Hair Girl Beautiful - Free photo on Pixabay",
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "free_download_click",
+   "s": 2.2,
+   "outcome": "OK-BLIND"
+  },
+  {
+   "name": "save",
+   "s": 2.0,
+   "via": "download-event",
+   "saved": "moni_memoni-red-hair-girl-8158373.jpg",
+   "bytes": 2221726,
+   "outcome": "OK-BLIND"
+  }
+ ],
+ "blockers": [],
+ "downloads": [
+  {
+   "file": "moni_memoni-red-hair-girl-8158373.jpg",
+   "bytes": 2221726,
+   "url": "https://pixabay.com/get/g463fc0d0d1ed87e47230e80255bc1c6c72b35b34cf25720e7c3643bb252f72e4287b20baf6f70e96e88f1c82f47ad09"
+  }
+ ],
+ "learned_actions": [
+  {
+   "label": "pixabay-search-url",
+   "url_template": "https://pixabay.com/images/search/<terms>/",
+   "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
+  },
+  {
+   "label": "photo-link",
+   "selector": "a[href*='/photos/'], a[href*='/illustrations/'], a[href*='/vectors/']",
+   "href": "/photos/red-hair-girl-beautiful-girl-8158373/",
+   "note": "stable href anchor; alt/slug scored for refined ask"
+  },
+  {
+   "label": "free-download-open",
+   "selector": "button:has-text('Free download')",
+   "note": "positional, no stable attrs; opens dialog"
+  },
+  {
+   "label": "original-menuitem",
+   "selector": "[role=menuitem]:has-text('Original')",
+   "note": "Original races download+nav \u2014 click tolerantly, poll handler (rule #15)"
+  }
+ ],
+ "total_s": 25.4,
+ "planner_bytes": 2313441,
+ "sentinel_bytes": 784,
+ "strikes": 0,
+ "tokens": {
+  "llm_prompt": 0,
+  "llm_completion": 0,
+  "llm_calls": 0,
+  "planner_bytes": 2313441,
+  "est_observation_tokens": 578360,
+  "note": "browser loop makes zero LLM calls; observation cost that WOULD be tokens = planner_bytes (~bytes/4 tokens, estimate)"
+ },
+ "pics_sink": "/Users/user/Downloads/pictures"
+}

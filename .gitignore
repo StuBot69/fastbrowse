@@ -4,8 +4,16 @@ phase1/snapshots*/
 phase1/*.ax.json
 phase1/*.dom.html
 .DS_Store
+.venv/
+venv/
+phase2/runs/
+phase4/runs/
+phase4/runs-camofox/
 phase5/learn-profile/
+phase5/learn-profile-fixture/
 phase5/runs/*/profile/
 phase5/runs/*/downloads/
 phase5/runs/*/events.json
+phase5/runs/probe-profile/
+phase6/runs/
 .serena/

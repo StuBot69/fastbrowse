@@ -1,30 +1,75 @@
-# Fastbrowse — Sentinel Browser
+# FastBrowse — eyes-first browser automation that sips tokens
 
-**Vision:** a browser that observes like an agent, not like a screenshot tool.
-Today's agents re-snapshot the entire page on every step — megabytes of
-accessibility tree + DOM — when usually only one region changed. The Sentinel
-Browser flips this: it watches the page continuously (per-region dumb diffs at
-2–4 fps), classifies what changed with a small local model, and emits only the
-delta the agent needs. Goal: **~4x+ fewer observation bytes** with zero missed
-state changes, running locally on commodity hardware with no paid services.
+A browser loop that **never sends DOM to an LLM**. Full snapshots only
+where knowledge is missing, cheap watchers everywhere else. Measured:
+9.16x fewer bytes on a Wikipedia flow, 160x on same-page revisit, **0
+planner bytes** on blind replays. The browser loop makes **zero metered
+LLM calls** — the only "tokens" are the ones you never spend.
 
-**How we get there:**
-1. **Phase 1 — measure (this repo, `phase1/`):** quantify the headroom.
-   Capture full AX snapshots + DOM per step on real sites, diff per-region
-   (header/nav/main/footer), and score volatility. Proves region-diffing wins
-   and identifies chronically-noisy regions (ads, tickers, infinite feeds) the
-   sentinel must quarantine.
-2. **Phase 2 — sentinel loop:** per-region diff at 2–4fps + small-model
-   classifier (changed / noisy / settled) on top of the phase-1 harness
-   (`capture_step` / `diff_regions`).
-3. **Phase 3 — browser integration:** ship as the observation layer for a
-   headless Chromium driving real agent tasks; benchmark task success vs
-   observation bytes.
+## Quick start (any bot, any box)
 
-**Repo layout:**
-- `phase1/measure.py` — reusable harness (`capture_step`, `diff_regions`,
-  `dismiss_banners`, flows: wikipedia / messy / redirects)
-- `phase1/RESULTS*.md` — measured numbers, volatility verdicts, redirect rules
-- `phase1/snapshots-*` — per-step AX + DOM artifacts (local only, gitignored)
+```bash
+git clone https://github.com/StuBot69/fastbrowse.git && cd fastbrowse
+./setup.sh                    # venv + playwright/camoufox/pillow + chromium
+.venv/bin/python fb.py rules  # the 16 rules — read first
+.venv/bin/python fb.py hunt --ask "female cyborg" --site pixabay --out runs/demo
+```
 
-**Reproduce:** `pip install -r requirements.txt && python -m playwright install chromium && cd phase1 && python measure.py --flow wikipedia --out snapshots-wiki`
+That hunts Pixabay's grid with eyes, downloads the verified pick, and
+writes `phase5/runs/demo/run-report.json` (times, bytes, strikes, vision
+verdict, token log). Exit 0 = downloaded, 1 = no match/bot-wall,
+2 = downloaded but eyes say wrong subject.
+
+## Commands (`fb.py` — the only interface you need)
+
+| command | what |
+|---|---|
+| `fb hunt --ask "..." [--site pixabay\|commons] [--verify "..."] [--out runs/NAME]` | eyes-first hunt + download + vision receipt |
+| `fb replay --tape runs/NAME --href <url> [--ask ...]` | blind replay of a learned href (no hunt, hybrid gate) |
+| `fb verify <file> --ask "..."` | eyes on a file: YES/NO + sentence |
+| `fb sites` | learned site knowledge + stale flags |
+| `fb rules` | the 16 hard-won rules |
+
+## Vision (optional, degrades gracefully)
+
+Eyes-first hunting needs an OpenAI-compatible vision endpoint:
+
+```bash
+export FASTBROWSE_VISION_URL=http://<host>:8080/v1/chat/completions
+export FASTBROWSE_VISION_MODEL=<model-id>
+```
+
+No endpoint (or `FASTBROWSE_NO_VISION=1`) → hunt falls back to
+first-result, receipt reports `SKIP`. Nothing crashes; the report says
+what wasn't verified. Reference setup: Qwen2.5-VL-7B on llama.cpp over
+Tailscale (~21s/look, local = electricity, not tokens).
+
+Other knobs: `FASTBROWSE_PICS_DIR` (default `~/Downloads/pictures`),
+`FASTBROWSE_ENGINE` (`camofox` walks through Cloudflare; vanilla
+chromium doesn't — rule 14).
+
+## How it works (30 seconds)
+
+1. **Learn**: search → consent sweep → `grid_hunt` (badged thumbnails,
+   NUMBER-only picks, pre-look overlay sweep + layout-shift tripwire) →
+   photo page → tolerant download (rule 15) → `vision_check` receipt.
+   Selectors land in `phase5/sites/<domain>.json`.
+2. **Replay blind**: learned href + TEXT gate (Jaccard ≥0.95) with dHash
+   second opinion. Both fail = drift → `needs_relearn` flag, one
+   snapshot, stop. Either passes = noise, carry on.
+3. **Report**: every run writes `run-report.json` — step times,
+   `planner_bytes`, `est_observation_tokens` (bytes/4, the cost a naive
+   agent WOULD have paid), `llm_calls: 0`, vision verdict.
+
+## Layout
+
+- `fb.py`, `fb_config.py`, `setup.sh`, `requirements.txt` — packaging
+- `phase1/` measure · `phase2/` sentinel · `phase3/` site profiles
+- `phase4/blind.py` — blind runner + hybrid drift gate
+- `phase5/` — `grid_hunt.py`, `pixabay_suite.py`, `sydney_suite.py`,
+  `learn.py` (headed human drive), `replay.py`, `sites/`, `runs/`
+- `phase6/hover.py` — hover physics · `human_mouse.py` — Bezier mouse
+- `REPORT.md` — full numbers + rules · `phase*/RESULTS.md` — per-phase
+
+Run bulk (`profile/`, `downloads/`, raw `events.json`, browser
+binaries) is gitignored — reports + action maps are the memory.

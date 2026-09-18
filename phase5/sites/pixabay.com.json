@@ -6,15 +6,10 @@
    "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
   },
   {
-   "label": "consent-reject",
-   "selector": "#onetrust-reject-all-handler",
-   "note": "OneTrust; count==1 visible guard (rule #5)"
-  },
-  {
    "label": "photo-link",
    "selector": "grid_hunt eyes-first pick",
    "href": "/illustrations/ai-generated-woman-cyborg-robot-8582923/",
-   "note": "jasper tile 1 screen 0, 1 looks"
+   "note": "jasper tile 1 screen 0, 2 looks"
   },
   {
    "label": "free-download-open",

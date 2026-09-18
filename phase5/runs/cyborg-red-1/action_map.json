@@ -1,0 +1,23 @@
+[
+ {
+  "label": "pixabay-search-url",
+  "url_template": "https://pixabay.com/images/search/<terms>/",
+  "note": "%20-joined terms; photo pages /photos|illustrations|vectors/<slug>-<id>/"
+ },
+ {
+  "label": "photo-link",
+  "selector": "a[href*='/photos/'], a[href*='/illustrations/'], a[href*='/vectors/']",
+  "href": "/photos/red-hair-girl-beautiful-girl-8158373/",
+  "note": "stable href anchor; alt/slug scored for refined ask"
+ },
+ {
+  "label": "free-download-open",
+  "selector": "button:has-text('Free download')",
+  "note": "positional, no stable attrs; opens dialog"
+ },
+ {
+  "label": "original-menuitem",
+  "selector": "[role=menuitem]:has-text('Original')",
+  "note": "Original races download+nav \u2014 click tolerantly, poll handler (rule #15)"
+ }
+]

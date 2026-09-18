@@ -22,12 +22,15 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-RUNS_DIR = HERE / "runs"  # all run artifacts live here, not flat in phase5/
-PICS_DIR = Path.home() / "Downloads" / "pictures"  # default sink for downloads
-SITES_DIR = HERE / "sites"  # learned site knowledge: <site>.json (selectors, rules)
+sys.path.insert(0, str(HERE.parent))  # fb_config lives at repo root
 sys.path.insert(0, str(HERE.parent / "phase4"))
 sys.path.insert(0, str(HERE.parent / "phase3"))
 sys.path.insert(0, str(HERE.parent))
+
+import fb_config  # noqa: E402
+RUNS_DIR = fb_config.RUNS_DIR
+PICS_DIR = fb_config.PICS_DIR
+SITES_DIR = fb_config.SITES_DIR
 
 import blind  # noqa: E402
 from blind import (  # noqa: E402

@@ -56,6 +56,13 @@ only where knowledge is missing, cheap watchers everywhere else.
 14. Cloudflare ("Just a moment...") kills vanilla Chromium headless dead
     (0 links, challenge page only) — Camoufox walks straight through.
     Engine choice IS the bot-wall strategy on hardened sites.
+15. Pixabay Original races download+nav to /get/: the click call dies
+    with a nav error (EXPECTED) while the download event already fired.
+    Fire-and-forget clicks (JS .click(), ignore errors), poll the handler
+    for a >50KB file; never expect_download, never re-GET the /get/ URL.
+16. Alt text lies ("black and white" photo style matched "white hair"):
+    never pick results by alt/slug scoring — show numbered tiles to eyes
+    first, download only what eyes verify.
 
 ## Site knowledge
 - Guardian AI topic page: /technology/artificialintelligenceai (NOT /ai or /artificialintelligence; on-site /search dead from here). Freshest links via /<topic>/2026/sep/<day>/all.

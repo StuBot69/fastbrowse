@@ -24,13 +24,19 @@ Flow per screen:
 import base64
 import io
 import json
+import os
 import random
 import re
+import sys
 import time
 import urllib.request
+from pathlib import Path
 
-JASPER_URL = "http://100.95.162.99:8080/v1/chat/completions"
-JASPER_MODEL = "/home/jasper/models/Qwen2.5-VL-7B-Abliterated-Q4_K_M.gguf"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import fb_config  # noqa: E402  (shared env-overridable config)
+
+JASPER_URL = os.environ.get("FASTBROWSE_VISION_URL", fb_config.VISION_URL)
+JASPER_MODEL = os.environ.get("FASTBROWSE_VISION_MODEL", fb_config.VISION_MODEL)
 
 
 def jasper_number_pick(thumb_bytes: bytes, ask: str,
@@ -72,14 +78,57 @@ def jasper_number_pick(thumb_bytes: bytes, ask: str,
     return got, txt, round(time.time() - t0, 1)
 
 
+def _badged_thumb(shot: bytes, tiles: list, vw: int, vh: int) -> bytes:
+    """Screenshot -> 640px thumb with BIG readable badges.
+
+    Lesson (Sep 26): 12px badges drawn pre-downscale shrink to ~6px
+    blobs Jasper literally cannot see ("no red badges visible"). So
+    downscale FIRST, then draw r=20 badges with white halo + bold
+    numbers in the 640px space Jasper actually receives."""
+    from PIL import Image, ImageDraw, ImageFont
+    im = Image.open(io.BytesIO(shot)).convert("RGB")
+    iw, ih = im.size
+    k = 640.0 / max(iw, 1)
+    im = im.resize((640, max(1, int(ih * k))), Image.Resampling.BILINEAR)
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 26)
+    except Exception:
+        try:
+            font = ImageFont.load_default(size=26)
+        except Exception:
+            font = ImageFont.load_default()
+    dr = ImageDraw.Draw(im)
+    for i, t in enumerate(tiles, 1):
+        cx = int((t["x"] + t["w"] / 2) * (iw / vw) * k)
+        cy = int((t["y"] + 14) * (ih / vh) * k)
+        r = 20
+        dr.ellipse([cx - r - 3, cy - r - 3, cx + r + 3, cy + r + 3],
+                   fill=(255, 255, 255))
+        dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(220, 0, 0))
+        dr.text((cx, cy), str(i), font=font, fill=(255, 255, 255),
+                anchor="mm")
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=70)
+    return buf.getvalue()
+
+
 def sweep_overlays(page) -> dict:
     """Pre-look sweep: kill delayed popups/cookie walls/newsletters before
     we spend a 21s Jasper look at them. DOM-only (~ms, no snapshot, no
-    tokens). Only clicks SINGLE visible matches — never a crowd."""
+    tokens). Dismisses EVERY matching visible control (reject, accept,
+    close, dismiss) — the banner is page furniture, any exit works.
+    Never clicks crowd-sized matches: guards count==1 per selector, and
+    skips anything below the fold (y > viewport height) where a click
+    would silently scroll instead of dismissing."""
     disposed: list = []
+    try:
+        vh = page.evaluate("() => window.innerHeight") or 900
+    except Exception:
+        vh = 900
     selectors = [
         "#onetrust-reject-all-handler",
         "#onetrust-accept-btn-handler",
+        "#onetrust-pc-btn-handler",  # close prefs, no accept/reject visible
         "[role=dialog] button[aria-label=Close]",
         "[role=dialog] button[aria-label=Dismiss]",
         ".modal.show button.close",
@@ -87,16 +136,42 @@ def sweep_overlays(page) -> dict:
     for sel in selectors:
         try:
             loc = page.locator(sel)
-            if loc.count() == 1 and loc.first.is_visible():
-                loc.first.click(timeout=3000)
-                disposed.append(sel)
+            if loc.count() != 1 or not loc.first.is_visible():
+                continue
+            try:
+                box = loc.first.bounding_box()
+            except Exception:
+                box = None
+            if box and box["y"] > vh - 60:
+                continue  # below the fold — scroll into view first
+            loc.first.click(timeout=3000)
+            disposed.append(sel)
+            try:
+                page.wait_for_timeout(800)
+            except Exception:
+                time.sleep(0.8)
+        except Exception:
+            continue
+    # last resort: the banner is visible but its buttons are below the
+    # fold (huge viewport, cookie bar at page bottom) — scroll it into
+    # view once and retry reject.
+    if not disposed:
+        try:
+            btn = page.locator("#onetrust-reject-all-handler")
+            if btn.count() == 1 and btn.first.is_visible():
+                btn.first.scroll_into_view_if_needed(timeout=3000)
+                try:
+                    page.wait_for_timeout(600)
+                except Exception:
+                    time.sleep(0.6)
+                btn.first.click(timeout=3000)
+                disposed.append("#onetrust-reject-all-handler(scrolled)")
                 try:
                     page.wait_for_timeout(800)
                 except Exception:
                     time.sleep(0.8)
-                break  # one disposal per sweep is enough; re-sweep next screen
         except Exception:
-            continue
+            pass
     return {"disposed": disposed, "checked": len(selectors)}
 
 
@@ -142,8 +217,11 @@ def snapshot_gate(page, prev: dict | None) -> dict:
 def grid_hunt(page, ask: str, item_selector: str,
               href_re: str = r"/(photos|illustrations|vectors)/.+-\d+/?$",
               max_screens: int = 5, exclude_substr: str | None = None,
-              viewport: dict | None = None) -> dict:
-    """Hunt `ask` across grid screens. Returns pick dict or raises."""
+              viewport: dict | None = None, min_tiles: int = 1) -> dict:
+    """Hunt `ask` across grid screens. Returns pick dict or raises.
+
+    min_tiles: skip near-empty screens (lazy grid still loading) without
+    burning a Jasper look — scroll and retry, up to 3 times per screen."""
     from PIL import Image, ImageDraw
     looks: list = []
     seen_hrefs: set = set()
@@ -162,6 +240,13 @@ def grid_hunt(page, ask: str, item_selector: str,
                 page.wait_for_timeout(1200)
             except Exception:
                 time.sleep(1.2)
+            # consent disposal reflows the grid — scroll a touch so the
+            # first screen isn't the banner gap, then settle for lazy tiles
+            try:
+                page.evaluate("() => window.scrollBy(0, 200)")
+                page.wait_for_timeout(1500)
+            except Exception:
+                time.sleep(1.5)
         # layout-shift tripwire: a popup arriving between sweep and shot
         # changes fixed-count/main-text — skip the wasted Jasper look.
         gate = snapshot_gate(page, prev)
@@ -204,32 +289,62 @@ def grid_hunt(page, ask: str, item_selector: str,
                  and t["href"] not in seen_hrefs]
         # cap + deterministic visual order (top-to-bottom, left-to-right)
         tiles = sorted(tiles, key=lambda t: (t["y"] // 40, t["x"]))[:18]
+        if len(tiles) < min_tiles and min_tiles > 1:
+            # lazy grid still loading: small scroll, settle, re-eval the
+            # SAME screen up to 3x — never spend a look on 2 tiles.
+            waited = 0
+            while len(tiles) < min_tiles and waited < 3:
+                _scroll(page, max(vh // 3, 300))
+                try:
+                    tiles = page.evaluate(
+                        """(sel) => {
+                          const els = [...document.querySelectorAll(sel)].slice(0, 60);
+                          return els.map(e => {
+                            const r = e.getBoundingClientRect();
+                            const img = e.querySelector('img');
+                            return {href: e.getAttribute('href') || '',
+                                    alt: (img && img.alt) || '',
+                                    x: Math.round(r.x), y: Math.round(r.y),
+                                    w: Math.round(r.width), h: Math.round(r.height)};
+                          }).filter(t => t.w > 60 && t.h > 60 &&
+                                         t.y > -50 && t.y < window.innerHeight - 50);
+                        }""", item_selector)
+                except Exception:
+                    tiles = []
+                tiles = [t for t in (tiles or [])
+                         if t.get("href") and re.search(href_re, t["href"])
+                         and (not exclude_substr or exclude_substr not in t["href"])
+                         and t["href"] not in seen_hrefs]
+                tiles = sorted(tiles, key=lambda t: (t["y"] // 40, t["x"]))[:18]
+                waited += 1
+            if not tiles:
+                _scroll(page, vh)
+                continue
+            if len(tiles) < min_tiles:
+                looks.append({"screen": screen, "gate": "THIN-SCREEN-SKIP",
+                              "n_tiles": len(tiles)})
+                _scroll(page, vh)
+                continue
         if not tiles:
             _scroll(page, vh)
             continue
         for t in tiles:
             seen_hrefs.add(t["href"])
 
-        # screenshot + badges
+        # screenshot + BIG badges (downscale first, draw r=20 in thumb
+        # space — 12px pre-downscale badges shrink to unreadable ~6px).
         try:
             shot = page.screenshot(timeout=8000)
         except Exception:
             _scroll(page, vh)
             continue
-        im = Image.open(io.BytesIO(shot)).convert("RGB")
-        iw, ih = im.size
-        sx, sy = iw / vw, ih / vh
-        dr = ImageDraw.Draw(im)
-        for i, t in enumerate(tiles, 1):
-            cx = int((t["x"] + t["w"] / 2) * sx)
-            cy = int((t["y"] + 12) * sy)
-            r = max(10, int(12 * sx))
-            dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(220, 0, 0))
-            dr.text((cx - 5, cy - 8), str(i), fill=(255, 255, 255))
-        buf = io.BytesIO()
-        im.save(buf, "JPEG", quality=70)
+        vis = [t for t in tiles
+               if t["y"] + t["h"] < vh - 40 or t["y"] < vh // 2]
+        if len(vis) < len(tiles) and len(vis) >= min(min_tiles, 2):
+            tiles = vis
+        thumb = _badged_thumb(shot, tiles, vw, vh)
         try:
-            n, raw, s = jasper_number_pick(buf.getvalue(), ask)
+            n, raw, s = jasper_number_pick(thumb, ask)
         except Exception as e:
             looks.append({"screen": screen, "error": str(e)[:100]})
             _scroll(page, vh)
@@ -254,21 +369,9 @@ def grid_hunt(page, ask: str, item_selector: str,
             except Exception:
                 _scroll(page, vh)
                 continue
-            im = Image.open(io.BytesIO(shot)).convert("RGB")
-            iw, ih = im.size
-            sx, sy = iw / vw, ih / vh
-            dr = ImageDraw.Draw(im)
-            for i, t in enumerate(tiles, 1):
-                cx = int((t["x"] + t["w"] / 2) * sx)
-                cy = int((t["y"] + 12) * sy)
-                r = max(10, int(12 * sx))
-                dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(220, 0, 0))
-                dr.text((cx - 5, cy - 8), str(i), fill=(255, 255, 255))
-            buf = io.BytesIO()
-            im.save(buf, "JPEG", quality=70)
             try:
                 n2, raw2, s2 = jasper_number_pick(
-                    buf.getvalue(),
+                    _badged_thumb(shot, tiles, vw, vh),
                     f"{ask} (there are {len(tiles)} numbered tiles; "
                     f"answer 1-{len(tiles)} or 0)")
             except Exception as e:
