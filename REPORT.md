@@ -73,5 +73,36 @@ only where knowledge is missing, cheap watchers everywhere else.
   17 Sep 26: blind download flow green — search → random photo → OneTrust
   dismiss → Free download → dialog Download (force-click) → file saved.
 
+## Session notes — 18/19 Sep 26 (product + hard-site pass)
+
+Vision-driven navigation (grid_hunt): the model now owns each screen's
+verdict — PICK n / SCROLL up|down / STOP reason — instead of NUMBER-only
+with a hardcoded scroll on 0. STOP aborts the hunt with the model's
+reason (1 look, not 6). Two guards keep it honest: sponsored/promoted
+tiles are filtered pre-look (exclude_card_re), and a STOP cried with
+free tiles visible is overruled — re-asked once with STOP disallowed on
+one-screen sites, else downgraded to SCROLL and logged. NoMatch carries
+the per-look verdicts so failures write reports instead of losing them.
+Receipt tightened: verify_download requires EVERY listed feature or NO.
+
+Sessions without re-verification (session_store): log in once, headed;
+each run seeds its throwaway profile from the canonical one, so sites
+see a known device and 2-step never re-fires. Passwords never touch
+logs — the recorder captures clicks/trails only. Canonical profiles and
+`.env` are gitignored; `fb doctor` triages installs with masked URLs.
+
+Human-tape learning pattern (DeviantArt): the download was an
+icon-anchor (`/download/<id>/<token>`), not a text button — the headed
+tape showed it, the suite now GETs that href first (full file in <1s).
+
+Hard-site findings: Pinterest search is fully login-walled logged-out
+(0 pins, any query). DeviantArt gives exactly one huntable screen, then
+a hard "Join to Continue" wall; full-res needs a session (logged-out
+serves blurred previews — never fetch those as results). Unsplash niche
+slugs stall on paywalled tiles and Plus pages have no raw URL. Pixabay
+"sexy" shelves sit behind SafeSearch blur, and its grid starts ~4000px
+down past a tall header (class-anchored tiles, min_tiles=2,
+max_screens=8).
+
 ## Repo
 github.com/StuBot69/fastbrowse — all phases + REPORT (this file), tree clean.
