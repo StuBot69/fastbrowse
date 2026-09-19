@@ -24,25 +24,28 @@ verdict, token log). Exit 0 = downloaded, 1 = no match/bot-wall,
 
 | command | what |
 |---|---|
-| `fb hunt --ask "..." [--site pixabay\|commons] [--verify "..."] [--out runs/NAME]` | eyes-first hunt + download + vision receipt |
+| `fb hunt --ask "..." [--site pixabay\|pexels\|unsplash\|deviantart\|commons] [--verify "..."] [--out runs/NAME]` | eyes-first hunt + download + vision receipt |
 | `fb replay --tape runs/NAME --href <url> [--ask ...]` | blind replay of a learned href (no hunt, hybrid gate) |
 | `fb verify <file> --ask "..."` | eyes on a file: YES/NO + sentence |
 | `fb sites` | learned site knowledge + stale flags |
 | `fb rules` | the 16 hard-won rules |
+| `fb doctor` | health check: venv, browsers, vision endpoints |
 
 ## Vision (optional, degrades gracefully)
 
-Eyes-first hunting needs an OpenAI-compatible vision endpoint:
+Eyes-first hunting needs an OpenAI-compatible vision endpoint. We call the
+primary endpoint "Jasper" and the fallback "Groq" in logs — role names,
+not machines. Bring your own:
 
 ```bash
-export FASTBROWSE_VISION_URL=http://<host>:8080/v1/chat/completions
-export FASTBROWSE_VISION_MODEL=<model-id>
+cp .env.example .env   # then fill in your endpoints
+.venv/bin/python fb.py doctor   # confirms what is reachable
 ```
 
 No endpoint (or `FASTBROWSE_NO_VISION=1`) → hunt falls back to
 first-result, receipt reports `SKIP`. Nothing crashes; the report says
-what wasn't verified. Reference setup: Qwen2.5-VL-7B on llama.cpp over
-Tailscale (~21s/look, local = electricity, not tokens).
+what wasn't verified. Reference setup: Qwen2.5-VL-7B on llama.cpp on your
+own box (~21s/look, local = electricity, not tokens).
 
 Other knobs: `FASTBROWSE_PICS_DIR` (default `~/Downloads/pictures`),
 `FASTBROWSE_ENGINE` (`camofox` walks through Cloudflare; vanilla
@@ -51,9 +54,9 @@ chromium doesn't — rule 14).
 ## How it works (30 seconds)
 
 1. **Learn**: search → consent sweep → `grid_hunt` (badged thumbnails,
-   NUMBER-only picks, pre-look overlay sweep + layout-shift tripwire) →
-   photo page → tolerant download (rule 15) → `vision_check` receipt.
-   Selectors land in `phase5/sites/<domain>.json`.
+   vision verdicts PICK/SCROLL/STOP, pre-look overlay sweep +
+   layout-shift tripwire) → photo page → tolerant download (rule 15) →
+   `vision_check` receipt. Selectors land in `phase5/sites/<domain>/`.
 2. **Replay blind**: learned href + TEXT gate (Jaccard ≥0.95) with dHash
    second opinion. Both fail = drift → `needs_relearn` flag, one
    snapshot, stop. Either passes = noise, carry on.

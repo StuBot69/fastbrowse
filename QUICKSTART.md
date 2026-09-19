@@ -3,11 +3,15 @@
 ## Setup (one-time)
 
 ```bash
-cd ~/Projects/fastbrowse
-./setup.sh
+git clone <this-repo> && cd fastbrowse
+./setup.sh              # venv + deps + chromium; copies .env.example -> .env
+cp .env.example .env    # only if setup didn't (fill in vision endpoints)
+.venv/bin/python fb.py doctor   # health check: what works, what's missing
 ```
 
-Installs venv, deps, Chromium. Camoufox fetches its own browser on first launch.
+Eyes-first hunting needs a vision endpoint (see `.env.example`); without
+one, hunts run degraded (first-result picks, receipt `SKIP`). Camoufox
+fetches its own browser on first launch.
 
 ## Hunt
 
@@ -35,17 +39,16 @@ Installs venv, deps, Chromium. Camoufox fetches its own browser on first launch.
 
 ## Vision endpoints
 
-| Priority | Where | Model | Cost |
-|----------|-------|-------|------|
-| Primary | Jasper :8080 (Tailscale 100.95.162.99) | Qwen2.5-VL-7B | Free (local) |
-| Fallback | Groq API | Llama 3.2 11B Vision | Free (1M tokens/day) |
+| Priority | Endpoint | Model | Cost |
+|----------|----------|-------|------|
+| Primary ("Jasper" role) | your own box, e.g. `http://127.0.0.1:8080` | Qwen2.5-VL-7B | Free (local electricity) |
+| Fallback ("Groq" role) | Groq API | Llama 3.2 11B Vision | Free tier |
 
-Auto-fallback: if Jasper is down, Groq takes over. No config needed — the Groq key is auto-loaded from the age vault.
+Auto-fallback: if primary is down, Groq takes over. Configure both in
+`.env` (see `.env.example`) — no code changes needed.
 
-Override with env vars:
 ```bash
 FASTBROWSE_VISION_URL=http://... FASTBROWSE_VISION_MODEL=... .venv/bin/python fb.py hunt ...
-FASTBROWSE_FALLBACK_URL=https://api.groq.com/openai/v1/chat/completions .venv/bin/python fb.py hunt ...
 ```
 
 ## Repo layout
@@ -60,7 +63,7 @@ fastbrowse/
 ├── phase3/            # Site profiles (selectors, gates, blind replay)
 ├── phase4/            # Frame-aware overlay + blind mode
 ├── phase5/            # Suites + runs
-│   ├── grid_hunt.py   # Eyes-first image grid picker (Jasper→Groq fallback)
+│   ├── grid_hunt.py   # Eyes-first image grid picker (primary→fallback vision)
 │   ├── pixabay_suite.py
 │   ├── sydney_suite.py
 │   └── together_signup.py  # Dead — Together AI needs $5 minimum

@@ -116,19 +116,28 @@ def visual_distance(h1: str, h2: str) -> int:
 
 
 def mark_site_stale(site: str, reason: str) -> None:
-    """Flag sites/<domain>.json needs_relearn so the next run re-learns
+    """Flag sites/<domain>/ needs_relearn so the next run re-learns
     just the broken steps instead of blind-clicking a changed layout."""
     if not site:
         return
     try:
-        SITES_DIR.mkdir(parents=True, exist_ok=True)
-        fp = SITES_DIR / f"{site}.json"
-        prior = json.loads(fp.read_text()) if fp.exists() else {}
-        prior.update({"needs_relearn": True, "stale_reason": reason[:200],
-                      "stale_at": time.strftime("%Y-%m-%d %H:%M")})
-        fp.write_text(json.dumps(prior, indent=1))
+        import sys as _sys
+        _phase5 = HERE.parent / "phase5"
+        if str(_phase5) not in _sys.path:
+            _sys.path.insert(0, str(_phase5))
+        import site_store as _ss
+        _ss.mark_stale(site, reason)
     except Exception:
-        pass
+        # last-resort legacy write so a broken store never loses the flag
+        try:
+            SITES_DIR.mkdir(parents=True, exist_ok=True)
+            fp = SITES_DIR / f"{site}.json"
+            prior = json.loads(fp.read_text()) if fp.exists() else {}
+            prior.update({"needs_relearn": True, "stale_reason": reason[:200],
+                          "stale_at": time.strftime("%Y-%m-%d %H:%M")})
+            fp.write_text(json.dumps(prior, indent=1))
+        except Exception:
+            pass
 
 
 def verify_effect(page, expect: dict, before_url: str) -> tuple[bool, str]:

@@ -100,7 +100,8 @@ def first_result_fallback(page, exclude_substr: str | None = None) -> dict:
 def run_flow(query: str, outdir: Path, profile_dir: Path,
              blind_mode: bool = False, expect_different_slug: str | None = None,
              blind_href: str | None = None,
-             verify_ask: str | None = None) -> dict:
+             verify_ask: str | None = None,
+             hunt_ask: str | None = None) -> dict:
     from camoufox.sync_api import Camoufox
 
     outdir.mkdir(parents=True, exist_ok=True)
@@ -216,13 +217,15 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
                 from grid_hunt import grid_hunt
                 if fb_config.vision_available():
                     found = grid_hunt(
-                        page, ask=query,
-                        item_selector=("a[href*='/photos/'], "
-                                       "a[href*='/illustrations/'], "
-                                       "a[href*='/vectors/']"),
+                        page, ask=hunt_ask or query,
+                        item_selector=("a.link--LGc0H[href*='/photos/'], "
+                                       "a.link--LGc0H[href*='/illustrations/'], "
+                                       "a.link--LGc0H[href*='/vectors/']"),
                         exclude_substr=(expect_different_slug or None),
-                        min_tiles=4,
-                        max_screens=5)
+                        exclude_card_re=(r"sponsored|shutterstock|istock|"
+                                         r"adobe stock|dreamstime|promoted"),
+                        min_tiles=2,  # pixabay stacks a tall header above
+                        max_screens=8)  # the grid — scroll further to reach it
                     how_pick = "OK-EYES"
                     note = (f"jasper tile {found.get('tile_number')} "
                             f"screen {found.get('screen_idx')}, "
@@ -251,8 +254,29 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
             except RuntimeError as e:
                 full = snapshot_bytes(page)
                 planner_bytes += full
+                looks = getattr(e, "looks", [])
+                for l in looks:
+                    print(f"    look s{l.get('screen')}: "
+                          f"{l.get('verdict')} {l.get('detail', '')[:70]!r} "
+                          f"tiles={l.get('n_tiles')}", flush=True)
                 step("collect_links", t0, outcome="FAIL-NO-MATCH",
-                     planner_bytes=full)
+                     planner_bytes=full, n_looks=len(looks))
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+                total_s = round(now() - t_start, 1)
+                (outdir / "run-report.json").write_text(json.dumps({
+                    "query": query, "site": SITE, "mode": "full-observation",
+                    "outcome": "FAIL-NO-MATCH", "error": str(e)[:200],
+                    "steps": steps, "downloads": [],
+                    "total_s": total_s, "planner_bytes": planner_bytes,
+                    "sentinel_bytes": sentinel_bytes, "strikes": strikes,
+                    "looks": looks,
+                    "tokens": {"llm_prompt": 0, "llm_completion": 0,
+                               "llm_calls": 0, "planner_bytes": planner_bytes,
+                               "est_observation_tokens": planner_bytes // 4},
+                }, indent=1))
                 raise SystemExit(str(e)[:200])
 
         # --- 4. hybrid gate, then open the photo page ---
@@ -485,18 +509,27 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
     except Exception as e:
         report["pics_sink_error"] = str(e)[:120]
     try:
-        SITES_DIR.mkdir(parents=True, exist_ok=True)
-        fp = SITES_DIR / f"{SITE}.json"
-        prior = json.loads(fp.read_text()) if fp.exists() else {}
+        import site_store
+        prior = site_store.load_profile(SITE)
         if not prior.get("needs_relearn"):
-            prior.update({"selectors": learned,
-                          "last_verified": time.strftime("%Y-%m-%d"),
-                          "schema_version": 1})
+            site_store.save_profile(
+                SITE,
+                {"last_verified": time.strftime("%Y-%m-%d")},
+                action_map=learned)
         # run-1 pick recorded so run-2 fetches a DIFFERENT picture
         if not blind_mode and downloads:
-            prior["run1_href"] = pick["href"]
-            prior["run1_file"] = downloads[-1].get("file")
-        fp.write_text(json.dumps(prior, indent=1))
+            site_store.save_profile(
+                SITE,
+                {"run1_href": pick["href"],
+                 "run1_file": downloads[-1].get("file")})
+        if downloads and not downloads[0].get("error"):
+            site_store.add_pick(SITE, {
+                "href": pick["href"],
+                "file": downloads[-1].get("file"),
+                "vision": report_vision.get("verdict"),
+                "query": query,
+                "run": outdir.name})
+        site_store.index_run(SITE, outdir.name)
     except Exception as e:
         report["site_save_error"] = str(e)[:120]
     (outdir / "run-report.json").write_text(json.dumps(report, indent=1))
@@ -513,6 +546,9 @@ def main() -> None:
     ap.add_argument("--profile-dir", default=None)
     ap.add_argument("--verify", default=None,
                     help="vision receipt ask (defaults to the query)")
+    ap.add_argument("--ask", default=None,
+                    help="hunt ask for Jasper's PICK verdict (defaults to query); "
+                         "keep loose to get candidates, gate strictness at --verify")
     ap.add_argument("--blind-href", default=None,
                     help="replay a known href blind (skips the hunt)")
     args = ap.parse_args()
@@ -521,12 +557,12 @@ def main() -> None:
         out = Path(args.out or str(RUNS_DIR / "cyborg-1"))
         rep = run_flow(args.query or RUN1_QUERY, out,
                        Path(args.profile_dir or str(out / "profile")),
-                       verify_ask=args.verify)
+                       verify_ask=args.verify, hunt_ask=args.ask)
     else:
         if not args.tape:
             raise SystemExit("--run 2 needs --tape runs/cyborg-1")
-        prior = json.loads((Path(SITES_DIR) / f"{SITE}.json").read_text()) \
-            if (Path(SITES_DIR) / f"{SITE}.json").exists() else {}
+        import site_store
+        prior = site_store.load_profile(SITE)
         if prior.get("needs_relearn"):
             print(f"STALE-FLAG: {prior.get('stale_reason')} — "
                   f"re-learning instead of blind replay")

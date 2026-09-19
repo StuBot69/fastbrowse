@@ -16,4 +16,20 @@ phase5/runs/*/downloads/
 phase5/runs/*/events.json
 phase5/runs/probe-profile/
 phase6/runs/
+# canonical login sessions (live cookies — NEVER commit)
+phase5/profiles/
+*-storage-state.json
+*.storage-state.json
+# operator config + per-operator agent context (live endpoints, sessions)
+.env
+.hermes.md
+# operator-learned site data (local state per install, not product)
+phase5/sites/*
+!phase5/sites/.gitkeep
+# local test-hunt runs (experiments — never ship)
+phase5/runs/pexels-*/
+phase5/runs/da-*/
+phase5/runs/unsplash-*/
+phase5/runs/probe-*/
+phase5/runs/pixabay-sexy-*/
 .serena/

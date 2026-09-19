@@ -9,17 +9,21 @@ download happens until eyes have verified.
 
 General by design:
   - any site: item_selector + href allowlist passed in, not hardcoded
+  - vision-driven: Jasper owns the navigation verdict each screen —
+    PICK <n> (click tile), SCROLL <down|up> (not here yet), or
+    STOP <reason> (dead end: paywall/login/trap — abort, don't burn looks)
   - bot-gentle: slow wheel scrolls, 1-1.8s settles, no rapid fire
-  - token-cheap: one Jasper look per screen (~640px thumb), NUMBER-only
-    reply, max_tokens=20. Browser loop still makes zero metered LLM calls.
-  - fast: annotated thumb, small payload, early exit on first YES.
+  - token-cheap: one Jasper look per screen (~640px thumb),
+    max_tokens=30. Browser loop still makes zero metered LLM calls.
+  - fast: annotated thumb, small payload, early exit on first PICK.
 
 Flow per screen:
   1. eval visible tiles (href + viewport box) for item_selector
   2. screenshot viewport, draw numbered badges at tile centres (PIL)
-  3. ask Jasper: "which number matches <ask>? NUMBER only, 0 = none"
-  4. hit -> return {href, tile_number, screen_idx, n_looks}
-  5. miss -> wheel-scroll ~0.8 viewport, settle, next screen
+  3. Jasper verdict on <ask>: PICK n / SCROLL dir / STOP reason
+  4. PICK -> return {href, tile_number, screen_idx, n_looks}
+  5. SCROLL -> wheel-scroll the reported direction, settle, next screen
+  6. STOP -> raise (suite aborts + reports Jasper's reason)
 """
 import base64
 import io
@@ -40,28 +44,16 @@ JASPER_MODEL = os.environ.get("FASTBROWSE_VISION_MODEL", fb_config.VISION_MODEL)
 FALLBACK_URL = os.environ.get("FASTBROWSE_FALLBACK_URL", fb_config.FALLBACK_URL)
 FALLBACK_MODEL = os.environ.get("FASTBROWSE_FALLBACK_MODEL", fb_config.FALLBACK_MODEL)
 
-# Groq API key — read from env or age vault
+# Groq API key — env (or local .env via fb_config) only. Never any vault,
+# keychain, or database lookup: operator secrets stay in operator hands.
 GROQ_API_KEY = os.environ.get("FASTBROWSE_GROQ_API_KEY", "")
-if not GROQ_API_KEY:
-    try:
-        import sqlite3, base64
-        _db = sqlite3.connect(str(Path.home() / "Projects" / "agent-economy" /
-                                  "state" / "agent_economy.db"))
-        _row = _db.execute(
-            "SELECT value FROM credentials WHERE provider='groq-heroeco' LIMIT 1"
-        ).fetchone()
-        if _row:
-            GROQ_API_KEY = base64.b64decode(_row[0]).decode()
-        _db.close()
-    except Exception:
-        pass
 
 
 def _vision_call(url: str, model: str, thumb_bytes: bytes, ask: str,
-                 max_tokens: int = 20, timeout: int = 300,
-                 api_key: str = "") -> tuple[int, str, float]:
+                 max_tokens: int = 30, timeout: int = 300,
+                 api_key: str = "") -> tuple[str, float]:
     """Send annotated thumbnail to an OpenAI-compatible vision endpoint.
-    Returns (number, raw_text, seconds)."""
+    Returns (raw_text, seconds) — the caller parses the verdict."""
     import base64 as _b64
     from PIL import Image as _Im
     t0 = time.time()
@@ -73,10 +65,17 @@ def _vision_call(url: str, model: str, thumb_bytes: bytes, ask: str,
     im.save(buf, "JPEG", quality=60)
     b64img = _b64.b64encode(buf.getvalue()).decode()
     q = (f"Numbered image tiles, each with a red number badge. "
-         f"Which tile best shows: {ask}? "
-         f"Only pick a tile that CLEARLY shows it — ordinary photos "
-         f"without those features are NOT a match. "
-         f"Reply with the NUMBER only. Reply 0 if none match.")
+         f"You are driving the browser. Target: {ask}. "
+         f"Only a tile that CLEARLY shows the target counts — ordinary "
+         f"photos without those features are NOT a match. "
+         f"Reply with exactly one verdict: "
+         f"PICK <n> (tile n clearly shows the target — badge number), "
+         f"SCROLL <down|up> (target not on this screen, scroll that way), "
+         f"or STOP <few words> (dead end: the results grid itself is "
+         f"blocked by a paywall, login wall, or consent trap covering it, "
+         f"or the page has nothing to do with the target — NOT just "
+         f"because login buttons exist in the header while results load "
+         f"further down).")
     payload = json.dumps({
         "model": model,
         "messages": [{"role": "user", "content": [
@@ -92,30 +91,63 @@ def _vision_call(url: str, model: str, thumb_bytes: bytes, ask: str,
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = json.load(r)
     txt = data["choices"][0]["message"]["content"].strip()
-    m = re.search(r"\d+", txt)
-    got = int(m.group()) if m else 0
-    return got, txt, round(time.time() - t0, 1)
+    return txt, round(time.time() - t0, 1)
 
 
-def jasper_number_pick(thumb_bytes: bytes, ask: str,
-                       timeout: int = 300) -> tuple[int, str, float]:
-    """Try Jasper (Qwen) first, fall back to Groq (Llama) if unavailable."""
+def parse_verdict(txt: str) -> dict:
+    """Parse a vision verdict into a decision dict.
+
+    Returns {"action": PICK|SCROLL|STOP, "n": int|None,
+             "dir": down|up, "reason": str, "raw": str}.
+    Unparseable replies degrade to SCROLL down (never strand the loop);
+    bare NUMBER-only replies stay backward-compatible as PICK n."""
+    raw = (txt or "").strip()
+    t = raw.upper()
+    m = re.search(r"PICK\s*(\d+)", t)
+    if m:
+        return {"action": "PICK", "n": int(m.group(1)), "dir": "down",
+                "reason": raw[:80], "raw": raw[:120]}
+    if "STOP" in t:
+        reason = re.sub(r"(?i)^.*?STOP\s*", "", raw).strip()[:80] or raw[:80]
+        return {"action": "STOP", "n": None, "dir": "down",
+                "reason": reason, "raw": raw[:120]}
+    if "SCROLL" in t:
+        direction = "up" if re.search(r"\bUP\b", t) else "down"
+        return {"action": "SCROLL", "n": None, "dir": direction,
+                "reason": raw[:80], "raw": raw[:120]}
+    m2 = re.search(r"\d+", t)  # legacy NUMBER-only model reply
+    if m2 and int(m2.group()) > 0:
+        return {"action": "PICK", "n": int(m2.group()), "dir": "down",
+                "reason": "legacy number reply: " + raw[:60],
+                "raw": raw[:120]}
+    return {"action": "SCROLL", "n": None, "dir": "down",
+            "reason": "unparseable, default scroll: " + raw[:60],
+            "raw": raw[:120]}
+
+
+def jasper_verdict(thumb_bytes: bytes, ask: str,
+                   timeout: int = 300) -> tuple[dict, float]:
+    """Vision-driven navigation verdict. Jasper (Qwen) first, Groq fallback.
+
+    Returns (verdict_dict, seconds). Raises if both endpoints are down."""
     # Try primary (Jasper Qwen)
     try:
-        return _vision_call(JASPER_URL, JASPER_MODEL, thumb_bytes, ask,
-                            timeout=timeout)
+        txt, s = _vision_call(JASPER_URL, JASPER_MODEL, thumb_bytes, ask,
+                              timeout=timeout)
+        return parse_verdict(txt), s
     except Exception as e:
-        print(f"  [jasper_number_pick] Jasper failed: {e}", flush=True)
+        print(f"  [jasper_verdict] Jasper failed: {e}", flush=True)
 
     # Try fallback (Groq Llama)
     if GROQ_API_KEY:
         try:
-            print(f"  [jasper_number_pick] Falling back to Groq {FALLBACK_MODEL}",
+            print(f"  [jasper_verdict] Falling back to Groq {FALLBACK_MODEL}",
                   flush=True)
-            return _vision_call(FALLBACK_URL, FALLBACK_MODEL, thumb_bytes, ask,
-                                timeout=timeout, api_key=GROQ_API_KEY)
+            txt, s = _vision_call(FALLBACK_URL, FALLBACK_MODEL, thumb_bytes,
+                                  ask, timeout=timeout, api_key=GROQ_API_KEY)
+            return parse_verdict(txt), s
         except Exception as e:
-            print(f"  [jasper_number_pick] Groq fallback failed: {e}", flush=True)
+            print(f"  [jasper_verdict] Groq fallback failed: {e}", flush=True)
 
     raise RuntimeError("No vision endpoint available (Jasper + Groq both down)")
 
@@ -256,14 +288,61 @@ def snapshot_gate(page, prev: dict | None) -> dict:
     return {"shifted": False, "detail": "stable", "cur": cur}
 
 
+TILE_JS = """(args) => {
+  const sel = args.sel, child = args.child, excard = args.excard;
+  const els = [...document.querySelectorAll(sel)].slice(0, 60);
+  const out = [];
+  for (const e of els) {
+    const r = e.getBoundingClientRect();
+    const img = e.querySelector('img');
+    const link = child ? e.querySelector(child) : null;
+    // sponsored/promoted tiles are paywalled traps for eyes-first:
+    // drop any tile whose card text matches the exclusion pattern
+    // (sponsored rows, Unsplash+ badges, promoted pins).
+    if (excard) {
+      let blob = '';
+      try {
+        const card = e.closest('li, figure, [class*="card"], [class*="Card"], [class*="tile"], [class*="Tile"], [class*="promo"], [class*="Promo"], [class*="sponsor"], [class*="Sponsor"]');
+        blob = ((e.innerText || '') + ' ' + ((card && card.innerText) || '')).slice(0, 300);
+        if (blob.match(new RegExp(excard, 'i'))) continue;
+      } catch (x) { /* keep the tile on regex errors */ }
+    }
+    const t = {href: (link && link.getAttribute('href')) || e.getAttribute('href') || '',
+            alt: (img && img.alt) || '',
+            x: Math.round(r.x), y: Math.round(r.y),
+            w: Math.round(r.width), h: Math.round(r.height)};
+    if (t.w > 60 && t.h > 60 && t.y > -50 && t.y < window.innerHeight - 50)
+      out.push(t);
+  }
+  return out;
+}"""
+
+
+class NoMatch(RuntimeError):
+    """grid_hunt found nothing. Carries the per-look verdicts so suites
+    can write a failure report instead of losing Jasper's reasons."""
+
+    def __init__(self, msg: str, looks: list | None = None):
+        super().__init__(msg)
+        self.looks = looks or []
+
+
 def grid_hunt(page, ask: str, item_selector: str,
               href_re: str = r"/(photos|illustrations|vectors)/.+-\d+/?$",
               max_screens: int = 5, exclude_substr: str | None = None,
-              viewport: dict | None = None, min_tiles: int = 1) -> dict:
+              viewport: dict | None = None, min_tiles: int = 1,
+              href_child: str | None = None,
+              exclude_card_re: str | None = None) -> dict:
     """Hunt `ask` across grid screens. Returns pick dict or raises.
 
     min_tiles: skip near-empty screens (lazy grid still loading) without
-    burning a Jasper look — scroll and retry, up to 3 times per screen."""
+    burning a Jasper look — scroll and retry, up to 3 times per screen.
+    href_child: descendant selector to read the href from (e.g. Unsplash
+    grids where the sized tile is a <figure> and the link is a 21px title
+    anchor inside it). When None, href comes from the tile element itself.
+    exclude_card_re: case-insensitive pattern matched against tile + card
+    text; matching tiles (Sponsored rows, Plus badges, promoted pins) are
+    dropped before the look so Jasper never spends on paywalled traps."""
     from PIL import Image, ImageDraw
     looks: list = []
     seen_hrefs: set = set()
@@ -311,18 +390,8 @@ def grid_hunt(page, ask: str, item_selector: str,
         # visible tiles with viewport-relative boxes
         try:
             tiles = page.evaluate(
-                """(sel) => {
-                  const els = [...document.querySelectorAll(sel)].slice(0, 60);
-                  return els.map(e => {
-                    const r = e.getBoundingClientRect();
-                    const img = e.querySelector('img');
-                    return {href: e.getAttribute('href') || '',
-                            alt: (img && img.alt) || '',
-                            x: Math.round(r.x), y: Math.round(r.y),
-                            w: Math.round(r.width), h: Math.round(r.height)};
-                  }).filter(t => t.w > 60 && t.h > 60 &&
-                                 t.y > -50 && t.y < window.innerHeight - 50);
-                }""", item_selector)
+                TILE_JS, {"sel": item_selector, "child": href_child,
+                          "excard": exclude_card_re})
         except Exception:
             tiles = []
         tiles = [t for t in (tiles or [])
@@ -339,18 +408,8 @@ def grid_hunt(page, ask: str, item_selector: str,
                 _scroll(page, max(vh // 3, 300))
                 try:
                     tiles = page.evaluate(
-                        """(sel) => {
-                          const els = [...document.querySelectorAll(sel)].slice(0, 60);
-                          return els.map(e => {
-                            const r = e.getBoundingClientRect();
-                            const img = e.querySelector('img');
-                            return {href: e.getAttribute('href') || '',
-                                    alt: (img && img.alt) || '',
-                                    x: Math.round(r.x), y: Math.round(r.y),
-                                    w: Math.round(r.width), h: Math.round(r.height)};
-                          }).filter(t => t.w > 60 && t.h > 60 &&
-                                         t.y > -50 && t.y < window.innerHeight - 50);
-                        }""", item_selector)
+                        TILE_JS, {"sel": item_selector, "child": href_child,
+                                  "excard": exclude_card_re})
                 except Exception:
                     tiles = []
                 tiles = [t for t in (tiles or [])
@@ -386,65 +445,156 @@ def grid_hunt(page, ask: str, item_selector: str,
             tiles = vis
         thumb = _badged_thumb(shot, tiles, vw, vh)
         try:
-            n, raw, s = jasper_number_pick(thumb, ask)
+            verdict, s = jasper_verdict(thumb, ask)
         except Exception as e:
             looks.append({"screen": screen, "error": str(e)[:100]})
             _scroll(page, vh)
             continue
         looks.append({"screen": screen, "n_tiles": len(tiles),
-                      "jasper": raw[:60], "pick": n, "s": s,
+                      "jasper": verdict["raw"][:60], "verdict": verdict["action"],
+                      "detail": verdict["reason"][:60], "s": s,
                       "sweeps": sweeps})
         print(f"  [grid_hunt] screen {screen}: {len(tiles)} tiles, "
-              f"jasper={raw[:40]!r} ({s}s)", flush=True)
-        if 1 <= n <= len(tiles):
-            win = tiles[n - 1]
-            return {"href": win["href"], "alt": win.get("alt", ""),
-                    "tile_number": n, "screen_idx": screen,
-                    "n_looks": len(looks), "looks": looks,
-                    "n_tiles_seen": len(seen_hrefs)}
-        # out-of-range or 0 with tiles still on screen: small-model
-        # miscount — re-shoot the SAME screen once with a stricter ask
-        # before scrolling on.
-        if tiles and not any(l.get("retry") for l in looks[-1:]):
-            try:
-                shot = page.screenshot(timeout=8000)
-            except Exception:
-                _scroll(page, vh)
+              f"jasper={verdict['action']} {verdict['reason'][:40]!r} ({s}s)",
+              flush=True)
+        if verdict["action"] == "STOP":
+            if tiles and not any(l.get("retry") for l in looks[-1:]):
+                # One-screen sites (dA's login wall caps logged-out
+                # scrolling): don't scroll away from the only good screen.
+                # Re-shoot and constrain the model — PICK or SCROLL only.
+                try:
+                    shot2 = page.screenshot(timeout=8000)
+                except Exception:
+                    shot2 = None
+                if shot2 is not None:
+                    try:
+                        verdict2, s2 = jasper_verdict(
+                            _badged_thumb(shot2, tiles, vw, vh),
+                            f"{ask} (STOP is not available on this screen: "
+                            f"reply PICK 1-{len(tiles)} or SCROLL down)")
+                    except Exception:
+                        verdict2, s2 = None, 0.0
+                    if verdict2 is not None:
+                        looks.append({"screen": screen,
+                                      "n_tiles": len(tiles),
+                                      "jasper": verdict2["raw"][:60],
+                                      "verdict": verdict2["action"],
+                                      "detail": verdict2["reason"][:60],
+                                      "s": s2, "retry": True,
+                                      "overruled": True})
+                        print(f"  [grid_hunt] screen {screen}: STOP overruled "
+                              f"— re-ask: {verdict2['action']} "
+                              f"{verdict2['reason'][:40]!r} ({s2}s)",
+                              flush=True)
+                        if verdict2["action"] == "PICK":
+                            n0 = verdict2["n"] or 0
+                            if 1 <= n0 <= len(tiles):
+                                win = tiles[n0 - 1]
+                                return {"href": win["href"],
+                                        "alt": win.get("alt", ""),
+                                        "tile_number": n0,
+                                        "screen_idx": screen,
+                                        "n_looks": len(looks),
+                                        "looks": looks,
+                                        "n_tiles_seen": len(seen_hrefs)}
+                        _scroll(page, vh, verdict2["dir"]
+                                if verdict2["action"] == "SCROLL" else "down")
+                        continue
+            if tiles:
+                # Model cried wolf: free tiles are visible and unblocked
+                # (login buttons in the header, blurred thumbs in view —
+                # not a wall). Downgrade to SCROLL, log it, move on.
+                # STOP is only honored when no usable tile is on screen.
+                looks[-1]["verdict"] = "SCROLL"
+                looks[-1]["overruled"] = True
+                looks[-1]["detail"] = (
+                    f"STOP overruled ({len(tiles)} tiles visible): "
+                    + verdict["reason"][:50])
+                print(f"  [grid_hunt] screen {screen}: STOP overruled — "
+                      f"{len(tiles)} tiles visible, scrolling down",
+                      flush=True)
+                _scroll(page, vh, "down")
                 continue
-            try:
-                n2, raw2, s2 = jasper_number_pick(
-                    _badged_thumb(shot, tiles, vw, vh),
-                    f"{ask} (there are {len(tiles)} numbered tiles; "
-                    f"answer 1-{len(tiles)} or 0)")
-            except Exception as e:
-                looks.append({"screen": screen, "error": str(e)[:100]})
-                _scroll(page, vh)
-                continue
-            looks.append({"screen": screen, "n_tiles": len(tiles),
-                          "jasper": raw2[:60], "pick": n2, "s": s2,
-                          "retry": True})
-            print(f"  [grid_hunt] screen {screen} retry: "
-                  f"jasper={raw2[:40]!r} ({s2}s)", flush=True)
-            if 1 <= n2 <= len(tiles):
-                win = tiles[n2 - 1]
+            raise NoMatch(
+                f"grid_hunt STOP on screen {screen}: {verdict['reason'][:120]} "
+                f"({len(looks)} jasper looks)", looks)
+        if verdict["action"] == "PICK":
+            n = verdict["n"] or 0
+            if 1 <= n <= len(tiles):
+                win = tiles[n - 1]
                 return {"href": win["href"], "alt": win.get("alt", ""),
-                        "tile_number": n2, "screen_idx": screen,
+                        "tile_number": n, "screen_idx": screen,
                         "n_looks": len(looks), "looks": looks,
                         "n_tiles_seen": len(seen_hrefs)}
-        _scroll(page, vh)
+            # out-of-range PICK: small-model miscount — re-shoot the SAME
+            # screen once with a stricter ask before moving on.
+            if tiles and not any(l.get("retry") for l in looks[-1:]):
+                try:
+                    shot = page.screenshot(timeout=8000)
+                except Exception:
+                    _scroll(page, vh)
+                    continue
+                try:
+                    verdict2, s2 = jasper_verdict(
+                        _badged_thumb(shot, tiles, vw, vh),
+                        f"{ask} (there are {len(tiles)} numbered tiles; "
+                        f"reply PICK 1-{len(tiles)}, SCROLL down, or STOP reason)")
+                except Exception as e:
+                    looks.append({"screen": screen, "error": str(e)[:100]})
+                    _scroll(page, vh)
+                    continue
+                looks.append({"screen": screen, "n_tiles": len(tiles),
+                              "jasper": verdict2["raw"][:60],
+                              "verdict": verdict2["action"],
+                              "detail": verdict2["reason"][:60], "s": s2,
+                              "retry": True})
+                print(f"  [grid_hunt] screen {screen} retry: "
+                      f"jasper={verdict2['action']} "
+                      f"{verdict2['reason'][:40]!r} ({s2}s)", flush=True)
+                if verdict2["action"] == "STOP":
+                    # retry context always has tiles on screen — same
+                    # overrule as the main path (see above).
+                    looks[-1]["verdict"] = "SCROLL"
+                    looks[-1]["overruled"] = True
+                    looks[-1]["detail"] = (
+                        f"STOP overruled ({len(tiles)} tiles visible): "
+                        + verdict2["reason"][:50])
+                    print(f"  [grid_hunt] screen {screen} retry: STOP "
+                          f"overruled, scrolling down", flush=True)
+                    _scroll(page, vh, "down")
+                    continue
+                if verdict2["action"] == "PICK":
+                    n2 = verdict2["n"] or 0
+                    if 1 <= n2 <= len(tiles):
+                        win = tiles[n2 - 1]
+                        return {"href": win["href"], "alt": win.get("alt", ""),
+                                "tile_number": n2, "screen_idx": screen,
+                                "n_looks": len(looks), "looks": looks,
+                                "n_tiles_seen": len(seen_hrefs)}
+                    _scroll(page, vh, verdict2["dir"]
+                            if verdict2["action"] == "SCROLL" else "down")
+                    continue
+                _scroll(page, vh, verdict2["dir"])
+                continue
+        # SCROLL (or PICK that missed twice): the model drives — scroll
+        # the reported direction and re-assess the next screen.
+        _scroll(page, vh, verdict["dir"] if verdict["action"] == "SCROLL"
+                else "down")
 
-    raise RuntimeError(
+    raise NoMatch(
         f"grid_hunt: no match for {ask!r} in {max_screens} screens "
-        f"({len(looks)} jasper looks)")
+        f"({len(looks)} jasper looks)", looks)
 
 
-def _scroll(page, vh: int) -> None:
-    """One bot-gentle wheel scroll + settle."""
+def _scroll(page, vh: int, direction: str = "down") -> None:
+    """One bot-gentle wheel scroll + settle. Direction comes from the
+    vision verdict (SCROLL up|down) — the model drives, not a constant."""
+    sign = -1 if direction == "up" else 1
     try:
-        page.mouse.wheel(0, int(vh * random.uniform(0.7, 0.85)))
+        page.mouse.wheel(0, sign * int(vh * random.uniform(0.7, 0.85)))
     except Exception:
         try:
-            page.evaluate(f"() => window.scrollBy(0, {int(vh * 0.8)})")
+            page.evaluate(f"() => window.scrollBy(0, {sign * int(vh * 0.8)})")
         except Exception:
             pass
     try:
@@ -459,7 +609,8 @@ def verify_download(path: str, ask: str,
     gate — the pre-download hunt should already have matched, this is
     the receipt.)
 
-    Uses _vision_call with Jasper→Groq fallback, same as jasper_number_pick.
+    Uses inline vision calls with Jasper→Groq fallback, same endpoints
+    as jasper_verdict.
     """
     import base64 as _b64
     from PIL import Image as _Im
@@ -472,6 +623,9 @@ def verify_download(path: str, ask: str,
     im.save(buf, "JPEG", quality=70)
     b64img = _b64.b64encode(buf.getvalue()).decode()
     q = (f"Does this image show: {ask}? "
+         f"Reply NO unless EVERY listed feature is clearly visible — "
+         f"a partial match (wrong hair, no robotic parts, not a full "
+         f"figure when one is asked for) is a NO. "
          f"Start your answer with YES or NO, then one short sentence.")
 
     # Try Jasper first, then Groq fallback

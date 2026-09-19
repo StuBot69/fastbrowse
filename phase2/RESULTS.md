@@ -41,5 +41,5 @@ Rough night for free vision pools:
    file truncated mid-run, salvageable records only).
 
 ## Local vision
-ollama absent on this machine — skipped per instructions. Fits jasper 1080 Ti
-later (11GB holds 7B VL quants).
+ollama absent on this machine — skipped per instructions. Fits a local
+11GB GPU later (7B VL quants).

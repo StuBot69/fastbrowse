@@ -1,6 +1,6 @@
 # FastBrowse — final report (all phases, 17 Sep 26)
 
-Stu's idea: planner + sentinel split for AI browser agents — full snapshots
+The core idea: planner + sentinel split for AI browser agents — full snapshots
 only where knowledge is missing, cheap watchers everywhere else.
 
 ## Headline numbers (measured, not projected)
@@ -27,7 +27,7 @@ only where knowledge is missing, cheap watchers everywhere else.
 - [x] 5. Learning mode (phase5/learn.py) — headed Camoufox persistent
       context, human drives; recorder captures clicks/trail/hovers/navs;
       Python-side tape mirror survives cross-origin navs; window-close
-      saves partial tape. Live demo (Stu): nav captured, 39 trail pts,
+      saves partial tape. Live demo: nav captured, 39 trail pts,
       4 hover anchors with dwell.
 - [x] 6. Hover physics (phase6/hover.py) — pointer-is-state; anchor chain
       walk, precise steady-hand mode, deepest-menu-wins recording, gap

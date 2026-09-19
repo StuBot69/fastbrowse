@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FastBrowse Sydney suite — Test 1 + Test 2 (Stu's spec, 17 Sep 26).
+"""FastBrowse Sydney suite — Test 1 + Test 2 (project spec).
 
 Test 1: straight search for a picture of Sydney Sweeney on Wikimedia
   Commons, download it. The site is LEARNED as we attempt: every selector
@@ -297,13 +297,12 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
     # persist learned site knowledge for drift detection (rule: selectors +
     # dom fingerprints per URL; replay warns when they stop matching)
     try:
-        SITES_DIR.mkdir(parents=True, exist_ok=True)
-        site_file = SITES_DIR / "commons.wikimedia.org.json"
-        prior = json.loads(site_file.read_text()) if site_file.exists() else {}
-        prior.update({"selectors": learned,
-                      "last_verified": time.strftime("%Y-%m-%d"),
-                      "schema_version": 1})
-        site_file.write_text(json.dumps(prior, indent=1))
+        import site_store
+        site_store.save_profile(
+            "commons.wikimedia.org",
+            {"last_verified": time.strftime("%Y-%m-%d")},
+            action_map=learned)
+        site_store.index_run("commons.wikimedia.org", outdir.name)
     except Exception as e:
         report["site_save_error"] = str(e)[:120]
     return report

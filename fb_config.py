@@ -3,16 +3,23 @@
 
 Every suite and helper imports this instead of hardcoding hosts/paths.
 A stranger cloning the repo gets working defaults minus vision (which
-degrades gracefully); Stu's setup comes from the environment.
+degrades gracefully); operators add their own endpoints via environment
+or a local `.env` file (gitignored — never commit yours).
 
-Env vars:
+We call the primary endpoint "Jasper" and the secondary "Groq" in logs
+and report keys — those are ROLE names for primary/fallback vision, not
+anybody's machine. Point them at whatever you run.
+
+Env vars (or `.env` in the repo root):
   FASTBROWSE_VISION_URL    Primary OpenAI-compatible chat-completions endpoint
-                           with vision (default: Jasper over Tailscale)
+                           with vision (default: unset — hunts run eyes-first
+                           only when this is reachable)
   FASTBROWSE_VISION_MODEL  model id the primary endpoint serves
-                           (default: Qwen2.5-VL abliterated on Jasper :8080)
+                           (default: qwen2.5-vl-7b)
   FASTBROWSE_FALLBACK_URL  Secondary vision endpoint (default: Groq)
   FASTBROWSE_FALLBACK_MODEL model id the fallback endpoint serves
                            (default: Llama 3.2 11B Vision on Groq)
+  FASTBROWSE_GROQ_API_KEY  API key for the fallback endpoint (default: unset)
   FASTBROWSE_PICS_DIR      where finished downloads get copied
                            (default: ~/Downloads/pictures)
   FASTBROWSE_ENGINE        camofox | chromium (default: camofox)
@@ -26,13 +33,34 @@ PHASE5 = REPO_ROOT / "phase5"
 RUNS_DIR = PHASE5 / "runs"
 SITES_DIR = PHASE5 / "sites"
 
-# Primary vision: Qwen2.5-VL-7B on Jasper (Tailscale)
-VISION_URL = os.environ.get(
-    "FASTBROWSE_VISION_URL",
-    "http://100.95.162.99:8080/v1/chat/completions")
+
+def _load_dotenv() -> None:
+    """Tiny stdlib `.env` loader: KEY=value lines, # comments, no deps.
+    Real environment always wins — .env only fills gaps."""
+    fp = REPO_ROOT / ".env"
+    try:
+        text = fp.read_text(encoding="utf-8")
+    except Exception:
+        return
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k, v = k.strip(), v.strip().strip("'\"")
+        if k and v and k not in os.environ:
+            os.environ[k] = v
+
+
+_load_dotenv()
+
+# Primary vision ("Jasper" role): any OpenAI-compatible endpoint serving
+# a vision-capable model — e.g. Qwen2.5-VL on llama.cpp on your own box.
+# Unset by default: hunts degrade gracefully until you configure one.
+VISION_URL = os.environ.get("FASTBROWSE_VISION_URL", "")
 VISION_MODEL = os.environ.get(
     "FASTBROWSE_VISION_MODEL",
-    "/home/jasper/models/Qwen2.5-VL-7B-Abliterated-Q4_K_M.gguf")
+    "qwen2.5-vl-7b")
 
 # Fallback vision: Llama 3.2 11B Vision on Groq (free tier, 1M tokens/day)
 FALLBACK_URL = os.environ.get(
@@ -64,7 +92,7 @@ def _probe(url: str, timeout: int = 8) -> bool:
 
 def vision_available(timeout: int = 8) -> bool:
     """Probe primary vision endpoint. Never raises — returns False."""
-    if NO_VISION:
+    if NO_VISION or not VISION_URL:
         return False
     return _probe(VISION_URL, timeout)
 
@@ -79,7 +107,7 @@ def fallback_available(timeout: int = 8) -> bool:
 def active_vision() -> tuple:
     """Return (url, model) for whichever vision endpoint is live.
 
-    Prefers primary (Jasper Qwen), falls back to Groq Llama.
+    Prefers primary, falls back to Groq.
     """
     if vision_available():
         return (VISION_URL, VISION_MODEL)

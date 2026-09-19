@@ -6,12 +6,13 @@ harness bots, and free-model workers.
       Eyes-first grid hunt + download + vision receipt. Writes
       phase5/runs/<NAME>/run-report.json. Exits 0 on download, 1 on
       no-match/bot-wall, 2 on vision NO (file fetched but wrong subject).
+      Sites: pixabay | pexels | unsplash | deviantart | commons.
   fb replay --tape runs/<NAME> --href <photo-url> [--ask ...]
       Blind replay of a LEARNED href (no hunt, hybrid gate only).
   fb verify <file> --ask "..."
       Eyes on a file via the vision endpoint. Prints YES/NO + sentence.
   fb sites
-      Learned site knowledge (sites/*.json): selectors, last_verified,
+      Learned site knowledge (sites/<domain>/): selectors, last_verified,
       needs_relearn flags.
   fb rules
       The 16 hard-won rules (REPORT.md) — required reading for new workers.
@@ -40,11 +41,27 @@ def cmd_hunt(args) -> int:
                "--run", "1", "--query", args.ask, "--out", str(out)]
         if args.verify:
             cmd += ["--verify", args.verify]
+    elif site == "pexels":
+        cmd = [sys.executable, str(PHASE5 / "pexels_suite.py"),
+               "--run", "1", "--query", args.ask, "--out", str(out)]
+        if args.verify:
+            cmd += ["--verify", args.verify]
+    elif site == "unsplash":
+        cmd = [sys.executable, str(PHASE5 / "unsplash_suite.py"),
+               "--run", "1", "--query", args.ask,
+               "--ask", args.verify or args.ask, "--out", str(out)]
+        if args.verify:
+            cmd += ["--verify", args.verify]
+    elif site == "deviantart":
+        cmd = [sys.executable, str(PHASE5 / "deviantart_suite.py"),
+               "--run", "1", "--query", args.ask, "--out", str(out)]
+        if args.verify:
+            cmd += ["--verify", args.verify]
     elif site == "commons":
         cmd = [sys.executable, str(PHASE5 / "sydney_suite.py"),
                "--run", "1", "--out", str(out)]
     else:
-        print(f"fb hunt: unknown site {site!r} (pixabay|commons)", file=sys.stderr)
+        print(f"fb hunt: unknown site {site!r} (pixabay|pexels|unsplash|deviantart|commons)", file=sys.stderr)
         return 3
     print(f"fb hunt: {' '.join(cmd)}", flush=True)
     r = subprocess.run(cmd, cwd=str(PHASE5))
@@ -90,14 +107,66 @@ def cmd_verify(args) -> int:
 
 
 def cmd_sites(_args) -> int:
-    for fp in sorted(fb_config.SITES_DIR.glob("*.json")):
-        try:
-            d = json.loads(fp.read_text())
-        except Exception:
+    sys.path.insert(0, str(PHASE5))
+    import site_store
+    for domain, kind in site_store.all_sites():
+        d = site_store.load_profile(domain)
+        if not d:
             continue
         stale = "STALE " + d.get("stale_reason", "") if d.get("needs_relearn") else "ok"
-        print(f"{fp.stem}: {len(d.get('selectors', []))} selectors, "
-              f"verified {d.get('last_verified', '?')} [{stale}]")
+        print(f"{domain}: {len(d.get('selectors', []))} selectors, "
+              f"verified {d.get('last_verified', '?')} [{stale}] ({kind})")
+    return 0
+
+
+def cmd_doctor(_args) -> int:
+    """One-command triage for operators: what works, what's missing."""
+    import importlib.util
+    ok = lambda name, good, detail="": print(
+        f"[{'ok' if good else 'MISSING'}] {name}" + (f" — {detail}" if detail else ""))
+    in_venv = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+    ok("python", True, f"{sys.version.split()[0]} (venv={in_venv})")
+    for mod in ("playwright", "camoufox", "PIL"):
+        spec = importlib.util.find_spec(mod)
+        if spec:
+            try:
+                m = importlib.import_module(mod)
+                ver = getattr(m, "__version__", "") or "installed"
+            except Exception:
+                ver = "installed (import check skipped)"
+            ok(f"dep {mod}", True, ver if isinstance(ver, str) else "installed")
+        else:
+            ok(f"dep {mod}", False, "pip install -r requirements.txt")
+    pw_cache = Path.home() / ".cache" / "ms-playwright"
+    ok("chromium (playwright)", pw_cache.exists(),
+       str(pw_cache) if pw_cache.exists()
+       else "optional with camofox engine; else: python -m playwright install chromium")
+    ok(".env file", (HERE / ".env").exists(),
+       "cp .env.example .env" if not (HERE / ".env").exists() else "loaded")
+    def _show_model(m: str) -> str:
+        # model ids can be local file paths — never print home dirs
+        return "model=" + (m.rsplit("/", 1)[-1] if "/" in m else m)
+    pv = fb_config.vision_available(timeout=5)
+    ok("primary vision", pv,
+       _show_model(fb_config.VISION_MODEL) if pv
+       else ("FASTBROWSE_VISION_URL unset — see .env.example"
+             if not fb_config.VISION_URL else "unreachable (check .env)"))
+    fb = fb_config.fallback_available(timeout=5)
+    ok("fallback vision", fb,
+       _show_model(fb_config.FALLBACK_MODEL) if fb
+       else "unset/unreachable — see .env.example")
+    if not pv and not fb:
+        print("  -> hunts run degraded (first-result, receipt SKIP). "
+              "See .env.example.")
+    sys.path.insert(0, str(PHASE5))
+    import site_store
+    sites = site_store.all_sites()
+    ok("learned sites", True, f"{len(sites)} ({', '.join(d for d, _ in sites) or 'none yet'})")
+    try:
+        fb_config.PICS_DIR.mkdir(parents=True, exist_ok=True)
+        ok("pics sink", True, str(fb_config.PICS_DIR))
+    except Exception as e:
+        ok("pics sink", False, str(e)[:80])
     return 0
 
 
@@ -113,12 +182,17 @@ def cmd_rules(_args) -> int:
     return 0
 
 
+FB_VERSION = "0.3.0"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="fb", description="FastBrowse entry point")
+    ap.add_argument("--version", action="version", version=f"fb {FB_VERSION}")
     sub = ap.add_subparsers(dest="cmd", required=True)
     h = sub.add_parser("hunt", help="eyes-first hunt + download + receipt")
     h.add_argument("--ask", required=True, help="what to find (search terms)")
-    h.add_argument("--site", default="pixabay", help="pixabay|commons")
+    h.add_argument("--site", default="pixabay",
+                   help="pixabay|pexels|unsplash|deviantart|commons")
     h.add_argument("--verify", default=None, help="vision receipt ask")
     h.add_argument("--out", default=None, help="runs/<NAME>")
     h.set_defaults(fn=cmd_hunt)
@@ -136,6 +210,8 @@ def main() -> None:
     s.set_defaults(fn=cmd_sites)
     u = sub.add_parser("rules", help="the 16 rules — read first")
     u.set_defaults(fn=cmd_rules)
+    d = sub.add_parser("doctor", help="health check: venv, browsers, vision")
+    d.set_defaults(fn=cmd_doctor)
     args = ap.parse_args()
     sys.exit(args.fn(args))
 

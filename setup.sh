@@ -10,4 +10,8 @@ fi
 "$VENV/bin/python" -m pip install -r requirements.txt
 "$VENV/bin/python" -m playwright install chromium 2>&1 | tail -2 || true
 # Camoufox fetches its own browser on first launch — nothing to preinstall.
-echo "OK: use $VENV/bin/python fb.py --help"
+if [ ! -f ".env" ]; then
+  cp .env.example .env
+  echo "wrote .env from .env.example — fill in vision endpoints, then run doctor"
+fi
+echo "OK: use $VENV/bin/python fb.py doctor"
