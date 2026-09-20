@@ -33,6 +33,12 @@ PHASE5 = REPO_ROOT / "phase5"
 RUNS_DIR = PHASE5 / "runs"
 SITES_DIR = PHASE5 / "sites"
 
+# Cloudflare fronts several vision endpoints and 1010-blocks Python-urllib's
+# default UA. Identify as a browser everywhere we call out.
+_BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+               "AppleWebKit/537.36 (KHTML, like Gecko) "
+               "Chrome/126.0 Safari/537.36")
+
 
 def _load_dotenv() -> None:
     """Tiny stdlib `.env` loader: KEY=value lines, # comments, no deps.
@@ -81,7 +87,7 @@ def _probe(url: str, timeout: int = 8, api_key: str = "") -> bool:
     import json
     import urllib.request
     try:
-        headers = {}
+        headers = {"User-Agent": _BROWSER_UA}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
         req = urllib.request.Request(

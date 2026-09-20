@@ -84,7 +84,8 @@ def _vision_call(url: str, model: str, thumb_bytes: bytes, ask: str,
                 "url": "data:image/jpeg;base64," + b64img}}]}],
         "max_tokens": max_tokens,
     }).encode()
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json",
+               "User-Agent": fb_config._BROWSER_UA}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(url, data=payload, headers=headers)
@@ -642,7 +643,8 @@ def verify_download(path: str, ask: str,
                         "url": "data:image/jpeg;base64," + b64img}}]}],
                 "max_tokens": 80,
             }).encode()
-            headers = {"Content-Type": "application/json"}
+            headers = {"Content-Type": "application/json",
+               "User-Agent": fb_config._BROWSER_UA}
             if key:
                 headers["Authorization"] = f"Bearer {key}"
             req = urllib.request.Request(url, data=payload, headers=headers)
