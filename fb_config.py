@@ -76,14 +76,18 @@ ENGINE = os.environ.get("FASTBROWSE_ENGINE", "camofox")
 NO_VISION = os.environ.get("FASTBROWSE_NO_VISION", "") == "1"
 
 
-def _probe(url: str, timeout: int = 8) -> bool:
+def _probe(url: str, timeout: int = 8, api_key: str = "") -> bool:
     """Probe an OpenAI-compatible /models endpoint. Never raises."""
     import json
     import urllib.request
     try:
-        with urllib.request.urlopen(
-                url.rsplit("/chat/completions", 1)[0] + "/models",
-                timeout=timeout) as r:
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        req = urllib.request.Request(
+            url.rsplit("/chat/completions", 1)[0] + "/models",
+            headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             json.load(r)
         return True
     except Exception:
@@ -98,10 +102,12 @@ def vision_available(timeout: int = 8) -> bool:
 
 
 def fallback_available(timeout: int = 8) -> bool:
-    """Probe fallback vision endpoint. Never raises — returns False."""
+    """Probe fallback vision endpoint (with key — Groq 401s without).
+    Never raises — returns False."""
     if NO_VISION:
         return False
-    return _probe(FALLBACK_URL, timeout)
+    return _probe(FALLBACK_URL, timeout,
+                  api_key=os.environ.get("FASTBROWSE_GROQ_API_KEY", ""))
 
 
 def active_vision() -> tuple:
