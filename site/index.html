@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FastBrowse — the token-saver you bolt onto the agent you already pay for</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 3rem auto; padding: 0 1.2rem; line-height: 1.6; color: #1a1a1a; }
+  h1 { font-size: 2rem; } .n { font-size: 2.4rem; font-weight: 800; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  td, th { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; }
+  pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; font-size: .85rem; }
+  .cta { background: #111; color: #fff; padding: .8rem 1.4rem; text-decoration: none; display: inline-block; margin: .4rem .4rem 0 0; }
+</style>
+</head>
+<body>
+<h1>FastBrowse</h1>
+<p>Eyes-first browser automation that sips tokens. The browser loop makes
+<strong>zero metered LLM calls</strong> — full snapshots only where knowledge
+is missing, cheap watchers everywhere else.</p>
+
+<table>
+<tr><th>Measured</th><th>Result</th></tr>
+<tr><td>Wikipedia flow (5 steps)</td><td class="n">9.16×</td></tr>
+<tr><td colspan="2">fewer bytes via changed-regions (hypothesis was 4×)</td></tr>
+<tr><td>Same-page revisit</td><td class="n">160×</td></tr>
+<tr><td>Blind replay</td><td class="n">0</td></tr>
+<tr><td colspan="2">planner bytes. Learned href + TEXT gate, no snapshots.</td></tr>
+<tr><td>Timed image hunt (search → eyes → download → receipt)</td><td class="n">52s</td></tr>
+</table>
+
+<pre>[ok] primary vision — model=Qwen2.5-VL-7B (local electricity)
+[ok] learned sites — 4 (deviantart, pexels, pixabay, unsplash)
+planner_bytes: 0, est_observation_tokens: 0, llm_calls: 0</pre>
+
+<h2>How it works (30 seconds)</h2>
+<ol>
+<li><strong>Learn:</strong> badged thumbnails shown to a local vision model — PICK / SCROLL / STOP verdicts. Selectors land in a per-site pack.</li>
+<li><strong>Replay blind:</strong> learned href + TEXT gate (Jaccard ≥0.95) with dHash second opinion. Drift → re-learn flag, one snapshot, stop.</li>
+<li><strong>Report:</strong> every run writes times, bytes, strikes, vision verdict, token log.</li>
+</ol>
+
+<h2>Upkeep, not software</h2>
+<p>FastBrowse is open source. What we sell is the boring part done right:
+version pinning, monthly selector re-validation across your site packs,
+and a healthcheck your team can run. One page, one number: your Anthropic
+bill, down.</p>
+
+<a class="cta" href="https://github.com/StuBot69/fastbrowse">GitHub</a>
+<a class="cta" href="https://github.com/StuBot69/fastbrowse/blob/main/REPORT.md">Full numbers</a>
+</body>
+</html>
