@@ -22,8 +22,11 @@ Vision degrades gracefully: FASTBROWSE_NO_VISION=1 or unreachable endpoint
 """
 import argparse
 import json
+import re
+import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -185,6 +188,146 @@ def cmd_rules(_args) -> int:
 FB_VERSION = "0.3.0"
 
 
+def cmd_shot(args) -> int:
+    """Screenshot one or more URLs with camofox/chromium."""
+    urls = args.urls
+    if len(urls) == 1 and urls[0].startswith("@"):
+        # Read URLs from file (one per line)
+        with open(urls[0][1:]) as f:
+            urls = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+    outdir = args.out or f"shots-{int(time.time())}"
+    full = args.full
+    headless = not args.headed
+    engine = args.engine
+    wait = args.wait
+    
+    from playwright.sync_api import sync_playwright
+    import importlib.util
+    use_camofox = (engine == "camofox")
+    if use_camofox:
+        spec = importlib.util.find_spec("camoufox.sync_api")
+        if not spec:
+            print("camoufox not available; install with: pip install camoufox", file=sys.stderr)
+            return 3
+    
+    PICS_DIR = fb_config.PICS_DIR
+    PICS_DIR.mkdir(parents=True, exist_ok=True)
+    outdir_path = Path(outdir)
+    outdir_path.mkdir(parents=True, exist_ok=True)
+    
+    results = []
+    if use_camofox:
+        from camoufox.sync_api import Camoufox
+        with Camoufox(headless=headless) as browser:
+            for i, url in enumerate(urls):
+                res = _shot_one(browser, url, outdir_path, full, wait, i, use_camofox)
+                results.append(res)
+                if i < len(urls) - 1:
+                    time.sleep(args.gap)
+    else:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=headless)
+            try:
+                for i, url in enumerate(urls):
+                    res = _shot_one(browser, url, outdir_path, full, wait, i, use_camofox)
+                    results.append(res)
+                    if i < len(urls) - 1:
+                        time.sleep(args.gap)
+            finally:
+                browser.close()
+    
+    # Receipt
+    receipt = {
+        "command": "shot",
+        "engine": engine,
+        "headless": headless,
+        "full_page": full,
+        "results": results,
+        "total": len(results),
+        "ok": sum(1 for r in results if r.get("ok")),
+        "pics_dir": str(PICS_DIR),
+        "outdir": str(outdir_path),
+    }
+    (outdir_path / "shot-receipt.json").write_text(json.dumps(receipt, indent=1))
+    print(f"fb shot done: {receipt['ok']}/{receipt['total']} ok -> {outdir_path}")
+    return 0 if receipt['ok'] == receipt['total'] else 1
+
+
+def _shot_one(browser, url: str, outdir: Path, full: bool, wait: float, idx: int, use_camofox: bool) -> dict:
+    """Screenshot a single URL."""
+    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", url.split("://", 1)[-1].split("/")[0])[:60]
+    out_png = outdir / f"{idx:02d}-{safe_name}.png"
+    out_json = outdir / f"{idx:02d}-{safe_name}.json"
+    
+    start = time.time()
+    page = None
+    try:
+        if hasattr(browser, "new_page"):
+            page = browser.new_page(viewport={"width": 1366, "height": 900})
+        else:
+            ctx = browser.new_context(viewport={"width": 1366, "height": 900})
+            page = ctx.new_page()
+        
+        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        
+        # Dismiss common consent banners
+        for sel in [
+            "button:has-text('Accept')", "button:has-text('Got it')",
+            "button:has-text('Dismiss')", "button:has-text('Close')",
+            "button:has-text('Reject')", "button:has-text('Continue')",
+            "button:has-text('I agree')", "button:has-text('Agree')",
+            "button:has-text('Consent')", "button:has-text('OK')",
+            "[aria-label='Close']", ".cky-btn-accept",
+            "#onetrust-accept-btn-handler", "#onetrust-reject-all-handler",
+            ".fc-cta-consent", "[data-testid='accept-button']",
+        ]:
+            try:
+                loc = page.locator(sel)
+                if loc.count() == 1 and loc.first.is_visible():
+                    loc.first.click(timeout=2000)
+                    page.wait_for_timeout(800)
+                    break
+            except Exception:
+                pass
+        
+        page.wait_for_timeout(int(wait * 1000))
+        
+        shot = page.screenshot(full_page=full, path=str(out_png))
+        shot_bytes = len(shot) if shot else out_png.stat().st_size
+        
+        # Also copy to PICS_DIR
+        import shutil
+        pics_copy = fb_config.PICS_DIR / out_png.name
+        shutil.copy2(out_png, pics_copy)
+        
+        result = {
+            "idx": idx,
+            "url": url,
+            "title": page.title() if hasattr(page, "title") else "",
+            "png": str(out_png),
+            "pics_copy": str(pics_copy),
+            "bytes": shot_bytes,
+            "ok": True,
+            "elapsed_s": round(time.time() - start, 1),
+        }
+        out_json.write_text(json.dumps(result, indent=1))
+        return result
+    except Exception as e:
+        return {
+            "idx": idx,
+            "url": url,
+            "ok": False,
+            "error": str(e)[:200],
+            "elapsed_s": round(time.time() - start, 1),
+        }
+    finally:
+        if page:
+            try:
+                page.close()
+            except Exception:
+                pass
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="fb", description="FastBrowse entry point")
     ap.add_argument("--version", action="version", version=f"fb {FB_VERSION}")
@@ -212,6 +355,16 @@ def main() -> None:
     u.set_defaults(fn=cmd_rules)
     d = sub.add_parser("doctor", help="health check: venv, browsers, vision")
     d.set_defaults(fn=cmd_doctor)
+    sh = sub.add_parser("shot", help="screenshot one or more URLs with camofox/chromium")
+    sh.add_argument("urls", nargs="+", help="URL(s) to screenshot, or @file to read list from file")
+    sh.add_argument("--out", default=None, help="output directory name under phase5/runs/")
+    sh.add_argument("--engine", default="camofox", choices=["camofox", "chromium"])
+    sh.add_argument("--full", action="store_true", default=True, help="full page screenshot (default)")
+    sh.add_argument("--no-full", dest="full", action="store_false", help="viewport only")
+    sh.add_argument("--wait", type=float, default=3.0, help="seconds to wait after load before shot")
+    sh.add_argument("--gap", type=float, default=1.0, help="seconds between URLs")
+    sh.add_argument("--headed", action="store_true", help="run headed (visible browser)")
+    sh.set_defaults(fn=cmd_shot)
     args = ap.parse_args()
     sys.exit(args.fn(args))
 
