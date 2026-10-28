@@ -87,8 +87,15 @@ FALLBACK_MODEL = os.environ.get(
 # Third-choice local vision endpoint (e.g. a local VL model on this Mac).
 # Used when the remote primary is down AND the cloud fallback has no vision
 # model available. Reasoning VL models need a generous max_tokens.
-LOCAL_URL = os.environ.get("FASTBROWSE_LOCAL_URL", "")
-LOCAL_MODEL = os.environ.get("FASTBROWSE_LOCAL_MODEL", "")
+#
+# Defaults target the local NVIDIA NIM server on this Mac, so the chain works
+# out of the box when the remote box is down. Override via env for other hosts.
+LOCAL_URL = os.environ.get(
+    "FASTBROWSE_LOCAL_URL",
+    "http://127.0.0.1:8790/v1/chat/completions")
+LOCAL_MODEL = os.environ.get(
+    "FASTBROWSE_LOCAL_MODEL",
+    "nvidia/nemotron-3.5-super-vl-120b-a12b")
 LOCAL_API_KEY = os.environ.get("FASTBROWSE_LOCAL_API_KEY", "")
 LOCAL_MAX_TOKENS = int(os.environ.get("FASTBROWSE_LOCAL_MAX_TOKENS", "1200"))
 

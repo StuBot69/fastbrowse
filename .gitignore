@@ -22,6 +22,8 @@ phase5/profiles/
 *.storage-state.json
 # operator config + per-operator agent context (live endpoints, sessions)
 .env
+.env.*
+!.env.example
 .hermes.md
 # operator-learned site data (local state per install, not product)
 phase5/sites/*
