@@ -253,6 +253,44 @@ def cmd_shot(args) -> int:
     return 0 if receipt['ok'] == receipt['total'] else 1
 
 
+def _detect_stub(page) -> str:
+    """Return a reason string if the loaded page is an error/challenge stub.
+
+    A Google Play 404 still returns HTTP 200 with a tiny shell, so the status
+    code is not enough — check the rendered title, body text and DOM size.
+    """
+    try:
+        title = (page.title() or "").strip()
+    except Exception:
+        title = ""
+    try:
+        body = (page.inner_text("body") or "").strip()
+    except Exception:
+        body = ""
+    try:
+        dom_bytes = len(page.content() or "")
+    except Exception:
+        dom_bytes = 0
+
+    low_title = title.lower()
+    low_body = body.lower()[:2000]
+
+    if "just a moment" in low_title or "attention required" in low_title:
+        return f"bot challenge (title={title!r})"
+    if "not found" in low_title or title.lower() == "404":
+        return f"404 page (title={title!r})"
+    if "requested url was not found" in low_body:
+        return "404 shell (body says requested URL was not found)"
+    if "page not found" in low_body and dom_bytes < 60000:
+        return f"404 shell (dom={dom_bytes})"
+    if "access denied" in low_title or "access denied" in low_body[:500]:
+        return f"access denied (title={title!r})"
+    # Tiny DOM with no meaningful text is a stub shell.
+    if dom_bytes < 25000 and len(body) < 200:
+        return f"empty shell (dom={dom_bytes}, text={len(body)} chars)"
+    return ""
+
+
 def _shot_one(browser, url: str, outdir: Path, full: bool, wait: float, idx: int, use_camofox: bool) -> dict:
     """Screenshot a single URL."""
     safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", url.split("://", 1)[-1].split("/")[0])[:60]
@@ -270,7 +308,10 @@ def _shot_one(browser, url: str, outdir: Path, full: bool, wait: float, idx: int
         
         page.goto(url, wait_until="domcontentloaded", timeout=30000)
         
-        # Dismiss common consent banners
+        # Dismiss common consent banners.
+        # Guard: a generic text selector ("OK") can match a real page button
+        # that navigates away (Google Play "OK" -> Books store). Record the
+        # URL and go back if the click changed the page.
         for sel in [
             "button:has-text('Accept')", "button:has-text('Got it')",
             "button:has-text('Dismiss')", "button:has-text('Close')",
@@ -284,13 +325,23 @@ def _shot_one(browser, url: str, outdir: Path, full: bool, wait: float, idx: int
             try:
                 loc = page.locator(sel)
                 if loc.count() == 1 and loc.first.is_visible():
+                    pre_url = page.url
                     loc.first.click(timeout=2000)
                     page.wait_for_timeout(800)
+                    if page.url != pre_url:
+                        # The click navigated — undo it and keep the real page.
+                        page.goto(pre_url, wait_until="domcontentloaded",
+                                  timeout=30000)
+                        page.wait_for_timeout(1000)
                     break
             except Exception:
                 pass
         
         page.wait_for_timeout(int(wait * 1000))
+        
+        # Detect error/bot-wall stubs — a 200-status page can still be a
+        # "not found" shell or a challenge. Report these as failures, not ok.
+        stub_reason = _detect_stub(page)
         
         shot = page.screenshot(full_page=full, path=str(out_png))
         shot_bytes = len(shot) if shot else out_png.stat().st_size
@@ -303,11 +354,13 @@ def _shot_one(browser, url: str, outdir: Path, full: bool, wait: float, idx: int
         result = {
             "idx": idx,
             "url": url,
+            "final_url": page.url,
             "title": page.title() if hasattr(page, "title") else "",
             "png": str(out_png),
             "pics_copy": str(pics_copy),
             "bytes": shot_bytes,
-            "ok": True,
+            "ok": not stub_reason,
+            "stub": stub_reason,
             "elapsed_s": round(time.time() - start, 1),
         }
         out_json.write_text(json.dumps(result, indent=1))

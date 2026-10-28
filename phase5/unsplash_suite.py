@@ -149,7 +149,7 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         else:
             try:
                 from grid_hunt import grid_hunt
-                if fb_config.vision_available():
+                if fb_config.active_vision()[0]:
                     found = grid_hunt(
                         page, ask=ask,
                         item_selector=ITEM_SELECTOR,
@@ -273,7 +273,7 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         # --- 6. vision receipt ---
         if downloads:
             t0 = now()
-            if not fb_config.vision_available():
+            if not fb_config.active_vision()[0]:
                 step("vision_check", t0, outcome="SKIP-NO-VISION")
                 report_vision = {"verdict": "SKIP", "detail": "no vision endpoint"}
             else:

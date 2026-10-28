@@ -215,7 +215,7 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         else:
             try:
                 from grid_hunt import grid_hunt
-                if fb_config.vision_available():
+                if fb_config.active_vision()[0]:
                     found = grid_hunt(
                         page, ask=hunt_ask or query,
                         item_selector=("a.link--LGc0H[href*='/photos/'], "
@@ -449,7 +449,7 @@ def run_flow(query: str, outdir: Path, profile_dir: Path,
         # confirms the file is the ask, not a lookalike.
         if downloads and not downloads[0].get("error"):
             t0 = now()
-            if not fb_config.vision_available():
+            if not fb_config.active_vision()[0]:
                 step("vision_check", t0, outcome="SKIP-NO-VISION",
                      detail="no vision endpoint; unverified")
                 report_vision = {"verdict": "SKIP",

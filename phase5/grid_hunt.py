@@ -43,6 +43,11 @@ JASPER_URL = os.environ.get("FASTBROWSE_VISION_URL", fb_config.VISION_URL)
 JASPER_MODEL = os.environ.get("FASTBROWSE_VISION_MODEL", fb_config.VISION_MODEL)
 FALLBACK_URL = os.environ.get("FASTBROWSE_FALLBACK_URL", fb_config.FALLBACK_URL)
 FALLBACK_MODEL = os.environ.get("FASTBROWSE_FALLBACK_MODEL", fb_config.FALLBACK_MODEL)
+LOCAL_URL = os.environ.get("FASTBROWSE_LOCAL_URL", fb_config.LOCAL_URL)
+LOCAL_MODEL = os.environ.get("FASTBROWSE_LOCAL_MODEL", fb_config.LOCAL_MODEL)
+LOCAL_API_KEY = os.environ.get("FASTBROWSE_LOCAL_API_KEY", fb_config.LOCAL_API_KEY)
+LOCAL_MAX_TOKENS = int(os.environ.get("FASTBROWSE_LOCAL_MAX_TOKENS",
+                                      str(fb_config.LOCAL_MAX_TOKENS)))
 
 # Groq API key — env (or local .env via fb_config) only. Never any vault,
 # keychain, or database lookup: operator secrets stay in operator hands.
@@ -91,7 +96,13 @@ def _vision_call(url: str, model: str, thumb_bytes: bytes, ask: str,
     req = urllib.request.Request(url, data=payload, headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = json.load(r)
-    txt = data["choices"][0]["message"]["content"].strip()
+    msg = data["choices"][0]["message"]
+    txt = (msg.get("content") or "").strip()
+    if not txt:
+        # Reasoning models spend the budget on reasoning_content and can
+        # return content=None when the cap is too low. Use whatever reasoning
+        # text we got rather than treating it as an empty answer.
+        txt = (msg.get("reasoning_content") or "").strip()
     return txt, round(time.time() - t0, 1)
 
 
@@ -150,7 +161,20 @@ def jasper_verdict(thumb_bytes: bytes, ask: str,
         except Exception as e:
             print(f"  [jasper_verdict] Groq fallback failed: {e}", flush=True)
 
-    raise RuntimeError("No vision endpoint available (Jasper + Groq both down)")
+    # Try local endpoint (third choice)
+    if LOCAL_URL:
+        try:
+            print(f"  [jasper_verdict] Falling back to local {LOCAL_MODEL}",
+                  flush=True)
+            txt, s = _vision_call(LOCAL_URL, LOCAL_MODEL, thumb_bytes, ask,
+                                  timeout=max(timeout, 300),
+                                  api_key=LOCAL_API_KEY,
+                                  max_tokens=LOCAL_MAX_TOKENS)
+            return parse_verdict(txt), s
+        except Exception as e:
+            print(f"  [jasper_verdict] Local fallback failed: {e}", flush=True)
+
+    raise RuntimeError("No vision endpoint available (Jasper + Groq + local all down)")
 
 
 def _badged_thumb(shot: bytes, tiles: list, vw: int, vh: int) -> bytes:
@@ -291,7 +315,7 @@ def snapshot_gate(page, prev: dict | None) -> dict:
 
 TILE_JS = """(args) => {
   const sel = args.sel, child = args.child, excard = args.excard;
-  const els = [...document.querySelectorAll(sel)].slice(0, 60);
+  const els = [...document.querySelectorAll(sel)];
   const out = [];
   for (const e of els) {
     const r = e.getBoundingClientRect();
@@ -629,11 +653,14 @@ def verify_download(path: str, ask: str,
          f"figure when one is asked for) is a NO. "
          f"Start your answer with YES or NO, then one short sentence.")
 
-    # Try Jasper first, then Groq fallback
-    for url, model, key in [
-        (JASPER_URL, JASPER_MODEL, ""),
-        (FALLBACK_URL, FALLBACK_MODEL, GROQ_API_KEY),
+    # Try Jasper first, then Groq fallback, then local
+    for url, model, key, maxtok in [
+        (JASPER_URL, JASPER_MODEL, "", 80),
+        (FALLBACK_URL, FALLBACK_MODEL, GROQ_API_KEY, 80),
+        (LOCAL_URL, LOCAL_MODEL, LOCAL_API_KEY, LOCAL_MAX_TOKENS),
     ]:
+        if not url:
+            continue
         try:
             payload = json.dumps({
                 "model": model,
@@ -641,7 +668,7 @@ def verify_download(path: str, ask: str,
                     {"type": "text", "text": q},
                     {"type": "image_url", "image_url": {
                         "url": "data:image/jpeg;base64," + b64img}}]}],
-                "max_tokens": 80,
+                "max_tokens": maxtok,
             }).encode()
             headers = {"Content-Type": "application/json",
                "User-Agent": fb_config._BROWSER_UA}
@@ -650,7 +677,10 @@ def verify_download(path: str, ask: str,
             req = urllib.request.Request(url, data=payload, headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 data = json.load(r)
-            txt = data["choices"][0]["message"]["content"].strip()
+            msg = data["choices"][0]["message"]
+            txt = (msg.get("content") or "").strip()
+            if not txt:
+                txt = (msg.get("reasoning_content") or "").strip()
             s = round(time.time() - t0, 1)
             return txt.upper().startswith("YES"), txt, s
         except Exception as e:
